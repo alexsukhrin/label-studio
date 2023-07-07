@@ -101,7 +101,7 @@ def validate_label_config(config_string):
         raise LabelStudioValidationErrorSentryIgnored(str(exc))
     except jsonschema.exceptions.ValidationError as exc:
         error_message = exc.context[-1].message if len(exc.context) else exc.message
-        error_message = 'Validation failed on {}: {}'.format('/'.join(map(str, exc.path)), error_message.replace('@', ''))
+        error_message = f"Validation failed on {'/'.join(map(str, exc.path))}: {error_message.replace('@', '')}"
         raise LabelStudioValidationErrorSentryIgnored(error_message)
 
     # unique names in config # FIXME: 'name =' (with spaces) won't work
@@ -173,10 +173,10 @@ def get_annotation_tuple(from_name, to_name, type):
 
 def get_all_control_tag_tuples(label_config):
     outputs = parse_config(label_config)
-    out = []
-    for control_name, info in outputs.items():
-        out.append(get_annotation_tuple(control_name, info['to_name'], info['type']))
-    return out
+    return [
+        get_annotation_tuple(control_name, info['to_name'], info['type'])
+        for control_name, info in outputs.items()
+    ]
 
 
 def get_all_object_tag_names(label_config):
@@ -212,7 +212,6 @@ def get_task_from_labeling_config(config):
             body = json.loads(config[start:start + end])
         except Exception as exc:
             logger.error("Can't parse task from labeling config", exc_info=True)
-            pass
         else:
             logger.debug(json.dumps(body, indent=2))
             dont_use_root = 'predictions' in body or 'annotations' in body
@@ -266,14 +265,12 @@ def generate_sample_task_without_check(label_config, mode='upload', secure_mode=
         value_type = p.get('valueType') or p.get('valuetype')
         only_urls = secure_mode or value_type == 'url'
 
-        example_from_field_name = examples.get('$' + value)
-        if example_from_field_name:
+        if example_from_field_name := examples.get('$' + value):
             # try to get example by variable name
             task[value] = example_from_field_name
 
         elif value == 'video' and p.tag == 'HyperText':
             task[value] = examples.get('$videoHack')
-        # List with a matching Ranker tag pair 
         elif p.tag == 'List':
             task[value] = examples.get('List')
         elif p.tag == 'Paragraphs':
@@ -291,11 +288,11 @@ def generate_sample_task_without_check(label_config, mode='upload', secure_mode=
         elif p.tag == 'TimeSeries':
             # TimeSeries special case - generate signals on-the-fly
             time_column = p.get('timeColumn')
-            value_columns = []
-            for ts_child in p:
-                if ts_child.tag != 'Channel':
-                    continue
-                value_columns.append(ts_child.get('column'))
+            value_columns = [
+                ts_child.get('column')
+                for ts_child in p
+                if ts_child.tag == 'Channel'
+            ]
             sep = p.get('sep')
             time_format = p.get('timeFormat')
 
@@ -311,10 +308,7 @@ def generate_sample_task_without_check(label_config, mode='upload', secure_mode=
                 # data is JSON
                 task[value] = generate_time_series_json(time_column, value_columns, time_format)
         elif p.tag == 'HyperText':
-            if only_urls:
-                task[value] = examples['HyperTextUrl']
-            else:
-                task[value] = examples['HyperText']
+            task[value] = examples['HyperTextUrl'] if only_urls else examples['HyperText']
         elif p.tag.lower().endswith('labels'):
             task[value] = examples['Labels']
         elif p.tag.lower() == "choices":
@@ -426,8 +420,7 @@ def check_control_in_config_by_regex(config_string, control_type, filter=None):
         for key in item:
             expression = expression.replace(key, item[key])
         pattern = re.compile(expression)
-        full_match = pattern.fullmatch(control_type)
-        if full_match:
+        if full_match := pattern.fullmatch(control_type):
             return True
     return False
 
@@ -438,10 +431,7 @@ def check_toname_in_config_by_regex(config_string, to_name, control_type=None):
     :return: True if to_name is fullmatch to some pattern ion config
     """
     c = parse_config(config_string)
-    if control_type:
-        check_list = [control_type]
-    else:
-        check_list = list(c.keys())
+    check_list = [control_type] if control_type else list(c.keys())
     for control in check_list:
         item = c[control].get('regex', {})
         for to_name_item in c[control]['to_name']:
@@ -449,8 +439,7 @@ def check_toname_in_config_by_regex(config_string, to_name, control_type=None):
             for key in item:
                 expression = expression.replace(key, item[key])
             pattern = re.compile(expression)
-            full_match = pattern.fullmatch(to_name)
-            if full_match:
+            if full_match := pattern.fullmatch(to_name):
                 return True
     return False
 
@@ -466,8 +455,7 @@ def get_original_fromname_by_regex(config_string, fromname):
         for key in item:
             expression = expression.replace(key, item[key])
         pattern = re.compile(expression)
-        full_match = pattern.fullmatch(fromname)
-        if full_match:
+        if full_match := pattern.fullmatch(fromname):
             return control
     return fromname
 
@@ -477,7 +465,4 @@ def get_all_types(label_config):
     Get all types from label_config
     """
     outputs = parse_config(label_config)
-    out = []
-    for control_name, info in outputs.items():
-        out.append(info['type'].lower())
-    return out
+    return [info['type'].lower() for control_name, info in outputs.items()]

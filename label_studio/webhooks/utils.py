@@ -18,7 +18,7 @@ def run_webhook(webhook, action, payload=None):
         'action': action,
     }
     if webhook.send_payload and payload:
-        data.update(payload)
+        data |= payload
     try:
         logging.debug('Run webhook %s for action %s', webhook.id, action)
         return requests.post(
@@ -80,8 +80,7 @@ def emit_webhooks_for_instance(organization, project, action, instance=None):
     # get serialized payload
     action_meta = WebhookAction.ACTIONS[action]
     if instance and webhooks.filter(send_payload=True).exists():
-        serializer_class = action_meta.get('serializer')
-        if serializer_class:
+        if serializer_class := action_meta.get('serializer'):
             payload[action_meta['key']] = serializer_class(instance=instance, many=action_meta['many']).data
         if project and payload:
             payload['project'] = load_func(settings.WEBHOOK_SERIALIZERS['project'])(instance=project).data

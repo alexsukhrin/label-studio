@@ -88,15 +88,14 @@ class RedisImportStorageBase(ImportStorage, RedisStorageMixin):
     def iterkeys(self):
         client = self.get_client()
         path = str(self.path)
-        for key in client.keys(path + '*'):
-            yield key
+        yield from client.keys(f'{path}*')
 
     def get_data(self, key):
         client = self.get_client()
-        value = client.get(key)
-        if not value:
+        if value := client.get(key):
+            return json.loads(value)
+        else:
             return
-        return json.loads(value)
 
     def scan_and_create_links(self):
         return self._scan_and_create_links(RedisImportStorageLink)

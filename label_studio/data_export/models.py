@@ -97,8 +97,8 @@ class DataExport(object):
     @staticmethod
     def save_export_files(project, now, get_args, data, md5, name):
         """Generate two files: meta info and result file and store them locally for logging"""
-        filename_results = os.path.join(settings.EXPORT_DIR, name + '.json')
-        filename_info = os.path.join(settings.EXPORT_DIR, name + '-info.json')
+        filename_results = os.path.join(settings.EXPORT_DIR, f'{name}.json')
+        filename_info = os.path.join(settings.EXPORT_DIR, f'{name}-info.json')
         annotation_number = Annotation.objects.filter(project=project).count()
         try:
             platform_version = version.get_git_version()
@@ -148,7 +148,11 @@ class DataExport(object):
         now = datetime.now()
         data = json.dumps(tasks, ensure_ascii=False)
         md5 = hashlib.md5(json.dumps(data).encode('utf-8')).hexdigest()   # nosec
-        name = 'project-' + str(project.id) + '-at-' + now.strftime('%Y-%m-%d-%H-%M') + f'-{md5[0:8]}'
+        name = (
+            f'project-{str(project.id)}-at-'
+            + now.strftime('%Y-%m-%d-%H-%M')
+            + f'-{md5[:8]}'
+        )
 
         input_json = DataExport.save_export_files(project, now, get_args, data, md5, name)
 
@@ -172,9 +176,9 @@ class DataExport(object):
 
             # otherwise pack output directory into archive
             shutil.make_archive(tmp_dir, 'zip', tmp_dir)
-            out = read_bytes_stream(os.path.abspath(tmp_dir + '.zip'))
+            out = read_bytes_stream(os.path.abspath(f'{tmp_dir}.zip'))
             content_type = 'application/zip'
-            filename = name + '.zip'
+            filename = f'{name}.zip'
             return out, content_type, filename
 
 

@@ -300,15 +300,20 @@ def build_urls(project_id, task_id, annotation_id):
                 if 'pk' in key:
                     kwargs[key] = 1000  # for example user_pk or project_pk will be 1000
 
-                if key in ['pk', 'step_pk', 'job_id', 'queue_index']:
-                    kwargs[key] = 1000
-                elif key in ['token', 'uidb64']:
+                if key in [
+                    'pk',
+                    'step_pk',
+                    'job_id',
+                    'queue_index',
+                    'token',
+                    'uidb64',
+                ]:
                     kwargs[key] = 1000
                 elif key in ['key']:
                     kwargs[key] = '1000'
 
                 # we need to use really existing project/task/annotation ids from fixture
-                if key == 'project_id' or key == 'project_pk':
+                if key in ['project_id', 'project_pk']:
                     kwargs[key] = project_id
                 elif key == 'task_id':
                     kwargs[key] = task_id
@@ -375,12 +380,10 @@ def check_urls(urls, runner, match_statuses, project):
     statuses = {}
     for url in urls:
         print('-->', url)
-        status = {}
         restore_objects(project)
 
         r = runner.get(url)
-        status['get'] = r.status_code
-
+        status = {'get': r.status_code}
         r = runner.post(url)
         status['post'] = r.status_code
 

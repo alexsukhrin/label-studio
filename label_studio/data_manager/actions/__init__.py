@@ -68,7 +68,9 @@ def register_action(entry_point, title, order, **kwargs):
     """
     action_id = entry_point.__name__
     if action_id in settings.DATA_MANAGER_ACTIONS:
-        logger.debug('Action with id "' + action_id + '" already exists, rewriting registration')
+        logger.debug(
+            f'Action with id "{action_id}" already exists, rewriting registration'
+        )
 
     settings.DATA_MANAGER_ACTIONS[action_id] = {
         'id': action_id,
@@ -87,7 +89,7 @@ def register_actions_from_dir(base_module, action_dir):
         if '__init__' in path or '__pycache' in path or path.startswith('.'):
             continue
 
-        name = path[0:path.find('.py')]  # get only module name to read *.py and *.pyc
+        name = path[:path.find('.py')]
         try:
             module = import_module(f'{base_module}.{name}')
             if not hasattr(module, 'actions'):
@@ -106,7 +108,7 @@ def perform_action(action_id, project, queryset, user, **kwargs):
     """ Perform action using entry point from actions
     """
     if action_id not in settings.DATA_MANAGER_ACTIONS:
-        raise DataManagerException("Can't find '" + action_id + "' in registered actions")
+        raise DataManagerException(f"Can't find '{action_id}' in registered actions")
 
     action = settings.DATA_MANAGER_ACTIONS[action_id]
 
@@ -118,7 +120,7 @@ def perform_action(action_id, project, queryset, user, **kwargs):
     try:
         result = action['entry_point'](project, queryset, **kwargs)
     except Exception as e:
-        text = 'Error while perform action: ' + action_id + '\n' + tb.format_exc()
+        text = f'Error while perform action: {action_id}' + '\n' + tb.format_exc()
         logger.error(text, extra={'sentry_skip': True})
         raise e
 

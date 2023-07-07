@@ -76,12 +76,7 @@ def propagate_annotations_form(user, project):
 
 
 def remove_duplicates(project, queryset, **kwargs):
-    # get io_storage_* links for tasks, we need to copy them
-    storages = []
-    for field in dir(Task):
-        if field.startswith('io_storages_'):
-            storages += [field]
-
+    storages = [field for field in dir(Task) if field.startswith('io_storages_')]
     tasks = list(queryset.values(
         'data', 'id', 'total_annotations', *storages
     ))
@@ -130,8 +125,7 @@ def remove_duplicates(project, queryset, **kwargs):
     removing = []
 
     # prepare main tasks which won't be deleted
-    for data in duplicates:
-        root = duplicates[data]
+    for data, root in duplicates.items():
         if len(root) == 1:
             continue
 
@@ -171,7 +165,9 @@ def rename_labels(project, queryset, **kwargs):
 
     labels = project.get_parsed_config()
     if control_tag not in labels:
-        raise Exception('Wrong old label name, it is not from labeling config: ' + old_label_name)
+        raise Exception(
+            f'Wrong old label name, it is not from labeling config: {old_label_name}'
+        )
     label_type = labels[control_tag]['type'].lower()
 
     annotations = Annotation.objects.filter(project=project)
@@ -259,31 +255,27 @@ def add_data_field(project, queryset, **kwargs):
     size = queryset.count()
 
     cast = {'String': str, 'Number': float, 'Expression': str}
-    assert value_type in cast.keys()
+    assert value_type in cast
     value = cast[value_type](value)
 
     if value_type == 'Expression':
         add_expression(queryset, size, value, value_name)
 
+    elif settings.DJANGO_DB == settings.DJANGO_DB_SQLITE:
+        tasks = list(queryset.only('data'))
+        for task in tasks:
+            task.data[value_name] = value
+        Task.objects.bulk_update(tasks, fields=['data'], batch_size=1000)
+
     else:
-
-        # sqlite
-        if settings.DJANGO_DB == settings.DJANGO_DB_SQLITE:
-            tasks = list(queryset.only('data'))
-            for task in tasks:
-                task.data[value_name] = value
-            Task.objects.bulk_update(tasks, fields=['data'], batch_size=1000)
-
-        # postgres and other DB
-        else:
-            queryset.update(
-                data=Func(
-                    F("data"),
-                    Value([value_name]),
-                    Value(value, JSONField()),
-                    function="jsonb_set",
-                )
+        queryset.update(
+            data=Func(
+                F("data"),
+                Value([value_name]),
+                Value(value, JSONField()),
+                function="jsonb_set",
             )
+        )
 
     project.summary.update_data_columns([queryset.first()])
     return {'response_code': 200, 'detail': f'Updated {size} tasks'}
@@ -293,7 +285,7 @@ def process_arrays(params):
     start, end = params.find('['), -1
     while start != end:
         end = start + params[start:].find(']') + 1
-        params = params[0:start] + params[start:end].replace(',', ';') + params[end:]
+        params = params[:start] + params[start:end].replace(',', ';') + params[end:]
         start = end + params[end:].find('[') + 1
     return params
 
@@ -327,21 +319,18 @@ def add_expression(queryset, size, value, value_name):
         for i, v in enumerate(values):
             tasks[i].data[value_name] = v
 
-    # permutation sampling
     elif command == 'sample':
         assert len(args) == 0, "sample() doesn't have arguments"
         values = random.sample(range(0, size), size)
         for i, v in enumerate(values):
             tasks[i].data[value_name] = v
 
-    # uniform random
     elif command == 'random':
         assert len(args) == 2, 'random(min, max) should have 2 args: min & max'
         minimum, maximum = int(args[0]), int(args[1])
         for i in range(size):
             tasks[i].data[value_name] = random.randint(minimum, maximum)
 
-    # sampling with choices and weights
     elif command == 'choices':
         assert 0 < len(args) < 3, 'choices(values:list, weights:list) ' \
                                   'should have 1 or 2 args: values & weights (default=None)'
@@ -354,7 +343,6 @@ def add_expression(queryset, size, value, value_name):
         for i, v in enumerate(values):
             tasks[i].data[value_name] = v
 
-    # replace
     elif command == 'replace':
         assert len(args) == 2, 'replace(old_value:str, new_value:str) should have 2 args: old value & new value'
         old_value, new_value = json.loads(args[0]), json.loads(args[1])
@@ -364,7 +352,7 @@ def add_expression(queryset, size, value, value_name):
 
     else:
         raise Exception(
-            'Undefined expression, you can use: ' + add_data_field_examples
+            f'Undefined expression, you can use: {add_data_field_examples}'
         )
 
     Task.objects.bulk_update(tasks, fields=['data'], batch_size=1000)

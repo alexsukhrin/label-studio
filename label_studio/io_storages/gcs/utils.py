@@ -107,15 +107,15 @@ class GCS(object):
         """
         total_read = 0
         blob_iter = client.list_blobs(bucket_name, prefix=prefix)
-        prefix = str(prefix) if prefix else ''
-        regex = re.compile(str(regex_filter)) if regex_filter else None
+        prefix = prefix if prefix else ''
+        regex = re.compile(regex_filter) if regex_filter else None
         for blob in blob_iter:
             # skip dir level
             if blob.name == (prefix.rstrip('/') + '/'):
                 continue
             # check regex pattern filter
             if regex and not regex.match(blob.name):
-                logger.debug(blob.name + ' is skipped by regex filter')
+                logger.debug(f'{blob.name} is skipped by regex filter')
                 continue
             if return_key:
                 yield blob.name
@@ -205,7 +205,7 @@ class GCS(object):
             **kwargs
         )
 
-        logger.debug('Generated GCS signed url: ' + url)
+        logger.debug(f'Generated GCS signed url: {url}')
         return url
 
     @classmethod

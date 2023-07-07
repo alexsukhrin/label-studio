@@ -78,5 +78,5 @@ def init_sentry(release_name, release_version):
             traces_sample_rate=settings.SENTRY_RATE,
             send_default_pii=True,
             environment=settings.SENTRY_ENVIRONMENT,
-            release=release_name + '@' + str(release_version)
+            release=f'{release_name}@{str(release_version)}',
         )

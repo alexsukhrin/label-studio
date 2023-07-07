@@ -17,7 +17,7 @@ from tasks.models import Annotation, Task
 def client_and_token(business_client):
     token = Token.objects.get(user=business_client.business.admin)
     client = APIClient()
-    client.credentials(HTTP_AUTHORIZATION='Token ' + token.key)
+    client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
     client.organization_pk = business_client.organization.pk
     return client, token
 

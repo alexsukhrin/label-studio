@@ -157,8 +157,9 @@ class ProjectListAPI(generics.ListCreateAPIView):
             project = ser.save(organization=self.request.user.active_organization)
         except IntegrityError as e:
             if str(e) == 'UNIQUE constraint failed: project.title, project.created_by_id':
-                raise ProjectExistException('Project with the same name already exists: {}'.
-                                            format(ser.validated_data.get('title', '')))
+                raise ProjectExistException(
+                    f"Project with the same name already exists: {ser.validated_data.get('title', '')}"
+                )
             raise LabelStudioDatabaseException('Database error during project creation. Try again.')
 
     def get(self, request, *args, **kwargs):
@@ -217,10 +218,7 @@ class ProjectAPI(generics.RetrieveUpdateDestroyAPIView):
     @api_webhook(WebhookAction.PROJECT_UPDATED)
     def patch(self, request, *args, **kwargs):
         project = self.get_object()
-        label_config = self.request.data.get('label_config')
-
-        # config changes can break view, so we need to reset them
-        if label_config:
+        if label_config := self.request.data.get('label_config'):
             try:
                 has_changes = config_essential_data_has_changed(label_config, project.label_config)
             except KeyError:
@@ -453,17 +451,13 @@ class ProjectTaskListAPI(GetParentObjectMixin, generics.ListCreateAPIView,
     redirect_kwarg = 'pk'
 
     def get_serializer_class(self):
-        if self.request.method == 'GET':
-            return TaskSimpleSerializer
-        else:
-            return TaskSerializer
+        return TaskSimpleSerializer if self.request.method == 'GET' else TaskSerializer
 
     def filter_queryset(self, queryset):
         project = generics.get_object_or_404(Project.objects.for_user(self.request.user), pk=self.kwargs.get('pk', 0))
         # ordering is deprecated here
         tasks = Task.objects.filter(project=project).order_by('-updated_at')
-        page = paginator(tasks, self.request)
-        if page:
+        if page := paginator(tasks, self.request):
             return page
         else:
             raise Http404

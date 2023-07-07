@@ -23,7 +23,7 @@ class ProjectMixin:
         :param from_scratch: Skip calculated tasks
         """
         # get only id from queryset to decrease data size in job
-        if not (isinstance(tasks_queryset, set) or isinstance(tasks_queryset, list)):
+        if not (isinstance(tasks_queryset, (set, list))):
             tasks_queryset = set(tasks_queryset.values_list('id', flat=True))
         start_job_async_or_sync(self._update_tasks_counters_and_is_labeled, list(tasks_queryset), from_scratch=from_scratch)
 
@@ -38,7 +38,7 @@ class ProjectMixin:
         :param from_scratch: Skip calculated tasks
         """
         # get only id from queryset to decrease data size in job
-        if not (isinstance(tasks_queryset, set) or isinstance(tasks_queryset, list)):
+        if not (isinstance(tasks_queryset, (set, list))):
             tasks_queryset = set(tasks_queryset.values_list('id', flat=True))
         start_job_async_or_sync(self._update_tasks_counters_and_task_states, tasks_queryset, maximum_annotations_changed,
                                 overlap_cohort_percentage_changed, tasks_number_changed, from_scratch=from_scratch)

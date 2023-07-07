@@ -19,21 +19,22 @@ def settings(request):
 
     # django templates can't access names with hyphens
     versions['lsf'] = versions.get('label-studio-frontend', {})
-    versions['lsf']['commit'] = versions['lsf'].get('commit', 'none')[0:6]
+    versions['lsf']['commit'] = versions['lsf'].get('commit', 'none')[:6]
 
     versions['backend'] = {}
     if 'label-studio-os-backend' in versions:
-        versions['backend']['commit'] = versions['label-studio-os-backend'].get('commit', 'none')[0:6]
+        versions['backend']['commit'] = versions[
+            'label-studio-os-backend'
+        ].get('commit', 'none')[:6]
     if 'label-studio-enterprise-backend' in versions:
-        versions['backend']['commit'] = versions['label-studio-enterprise-backend'].get('commit', 'none')[0:6]
+        versions['backend']['commit'] = versions[
+            'label-studio-enterprise-backend'
+        ].get('commit', 'none')[:6]
 
     if 'dm2' in versions:
-        versions['dm2']['commit'] = versions['dm2'].get('commit', 'none')[0:6]
+        versions['dm2']['commit'] = versions['dm2'].get('commit', 'none')[:6]
 
-    feature_flags = {}
-    if hasattr(request, 'user'):
-        feature_flags = all_flags(request.user)
-
+    feature_flags = all_flags(request.user) if hasattr(request, 'user') else {}
     return {
         'settings': django_settings,
         'versions': versions,

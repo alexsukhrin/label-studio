@@ -21,10 +21,9 @@ class GetParentObjectMixin:
         The same as get_object method from DRF, but for the parent object
         For example if you want to get project inside /api/projects/ID/tasks handler
         """
-        assert self.parent_queryset is not None, (
-            "'%s' should include a `parent_queryset` attribute, "
-            % self.__class__.__name__
-        )
+        assert (
+            self.parent_queryset is not None
+        ), f"'{self.__class__.__name__}' should include a `parent_queryset` attribute, "
         queryset = self.parent_queryset
         if isinstance(queryset, QuerySet):
             # Ensure queryset is re-evaluated on each request.

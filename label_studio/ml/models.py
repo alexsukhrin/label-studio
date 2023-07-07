@@ -153,8 +153,7 @@ class MLBackend(models.Model):
             self.error_message = train_response.error_message
         else:
             self.state = MLBackendState.TRAINING
-            current_train_job = train_response.response.get('job')
-            if current_train_job:
+            if current_train_job := train_response.response.get('job'):
                 MLBackendTrainJob.objects.create(job_id=current_train_job, ml_backend=self)
         self.save()
 
@@ -264,9 +263,7 @@ class MLBackend(models.Model):
 
     def interactive_annotating(self, task, context=None, user=None):
         result = {}
-        options = {}
-        if user:
-            options = {'user': user}
+        options = {'user': user} if user else {}
         if not self.is_interactive:
             result['errors'] = ["Model is not set to be used for interactive preannotations"]
             return result

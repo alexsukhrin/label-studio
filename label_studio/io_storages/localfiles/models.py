@@ -67,7 +67,7 @@ class LocalFilesImportStorageBase(LocalFilesMixin, ImportStorage):
             if file.is_file():
                 key = file.name
                 if regex and not regex.match(key):
-                    logger.debug(key + ' is skipped by regex filter')
+                    logger.debug(f'{key} is skipped by regex filter')
                     continue
                 yield str(file)
 
@@ -78,7 +78,9 @@ class LocalFilesImportStorageBase(LocalFilesMixin, ImportStorage):
             # {settings.HOSTNAME}/data/local-files?d=<path/to/local/dir>
             document_root = Path(settings.LOCAL_FILES_DOCUMENT_ROOT)
             relative_path = str(path.relative_to(document_root))
-            return {settings.DATA_UNDEFINED_NAME: f'{settings.HOSTNAME}/data/local-files/?d={quote(str(relative_path))}'}
+            return {
+                settings.DATA_UNDEFINED_NAME: f'{settings.HOSTNAME}/data/local-files/?d={quote(relative_path)}'
+            }
 
         try:
             with open(path, encoding='utf8') as f:

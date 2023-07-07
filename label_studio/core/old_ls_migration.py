@@ -48,7 +48,7 @@ def _migrate_tasks(project_path, project):
             task = Task.objects.create(data=task_data.get('data', {}), project=project)
 
             # migrate annotations
-            annotations_path = project_path / 'completions' / '{}.json'.format(task_id)
+            annotations_path = project_path / 'completions' / f'{task_id}.json'
             if annotations_path.exists():
                 with io.open(os.path.abspath(annotations_path), encoding='utf-8') as c:
                     annotations_data = json.load(c)
@@ -125,9 +125,7 @@ def _migrate_tabs(project_path, project):
 def _migrate_storages(project, config):
     """Migrate source and target storages from config.json to database"""
 
-    # source storages migration
-    source = config.get('source', None)
-    if source:
+    if source := config.get('source', None):
         if source.get('type') == 'gcs':
             params = source.get('params', {})
             GCSImportStorage.objects.create(
@@ -166,9 +164,7 @@ def _migrate_storages(project, config):
                 password=params.get('password'),
                 db=params.get('db', 1),
             )
-    # target storages migration
-    target = config.get('target', None)
-    if target:
+    if target := config.get('target', None):
         if target.get('type') == 'gcs':
             params = target.get('params', {})
             GCSExportStorage.objects.create(

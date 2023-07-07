@@ -16,12 +16,6 @@ def seconds_to_pretty_time(value, show_seconds=False):
         return '< 1 minute'
     if value < 3600:
         m = int(value / 60.)
-        if m == 1:
-            return '1 minute'
-        else:
-            return f'{m} minutes'
+        return '1 minute' if m == 1 else f'{m} minutes'
     h = int(value / 3600)
-    if h == 1:
-        return '1 hour'
-    else:
-        return f'{h} hours'
+    return '1 hour' if h == 1 else f'{h} hours'

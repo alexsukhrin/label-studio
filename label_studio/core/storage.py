@@ -51,9 +51,8 @@ class SkipMissedManifestStaticFilesStorage(ManifestStaticFilesStorage):
         path, filename = os.path.split(clean_name)
         root, ext = os.path.splitext(filename)
         if file_hash is not None:
-            file_hash = ".%s" % file_hash
-        hashed_name = os.path.join(path, "%s%s%s" %
-                                   (root, file_hash, ext))
+            file_hash = f".{file_hash}"
+        hashed_name = os.path.join(path, f"{root}{file_hash}{ext}")
         unparsed_name = list(parsed_name)
         unparsed_name[2] = hashed_name
         # Special casing for a @font-face hack, like url(myfont.eot?#iefix")
@@ -65,12 +64,11 @@ class SkipMissedManifestStaticFilesStorage(ManifestStaticFilesStorage):
 
 class StorageProxyMixin:
     def url(self, name, storage_url=False, *args, **kwargs):
-        if flag_set('ff_back_dev_2915_storage_nginx_proxy_26092022_short'):
-            if storage_url is True:
-                return super().url(name, *args, **kwargs)
-            return f'{settings.HOSTNAME}/storage-data/uploaded/?filepath={name}'
-        else:
+        if not flag_set('ff_back_dev_2915_storage_nginx_proxy_26092022_short'):
             return super().url(name, *args, **kwargs)
+        if storage_url is True:
+            return super().url(name, *args, **kwargs)
+        return f'{settings.HOSTNAME}/storage-data/uploaded/?filepath={name}'
 
 
 class CustomS3Boto3Storage(StorageProxyMixin, S3Boto3Storage):
@@ -108,26 +106,23 @@ class AlternativeGoogleCloudStorageBase(GoogleCloudStorage):
         if not self.custom_endpoint and no_signed_url:
             return blob.public_url
         elif no_signed_url:
-            out = '{storage_base_url}/{quoted_name}'.format(
+            return '{storage_base_url}/{quoted_name}'.format(
                 storage_base_url=self.custom_endpoint,
                 quoted_name=_quote(name, safe=b"/~"),
             )
-            return out
         elif not self.custom_endpoint:
-            out2 = blob.generate_signed_url(
+            return blob.generate_signed_url(
                 expiration=self.expiration,
                 version="v4",
                 **self._get_signing_kwargs()
             )
-            return out2
         else:
-            out3 = blob.generate_signed_url(
+            return blob.generate_signed_url(
                 bucket_bound_hostname=self.custom_endpoint,
                 expiration=self.expiration,
                 version="v4",
                 **self._get_signing_kwargs()
             )
-            return out3
 
     def _get_signing_credentials(self):
         with self._signing_credentials_lock:
@@ -140,12 +135,11 @@ class AlternativeGoogleCloudStorageBase(GoogleCloudStorage):
 
     def _get_signing_kwargs(self):
         credentials = self._get_signing_credentials()
-        out = {
+        return {
             "service_account_email": credentials.service_account_email,
             "access_token": credentials.token,
-            "credentials": credentials
+            "credentials": credentials,
         }
-        return out
 
 
 class AlternativeGoogleCloudStorage(StorageProxyMixin, AlternativeGoogleCloudStorageBase):

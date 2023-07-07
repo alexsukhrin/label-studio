@@ -13,7 +13,7 @@ from .models import Label, LabelLink
 
 class LabelListSerializer(serializers.ListSerializer):
     def validate(self, items):
-        if len(set(item['project'] for item in items)) > 1:
+        if len({item['project'] for item in items}) > 1:
             raise ValidationError('Creating labels for different projects in one request not allowed')
         return items
 
@@ -80,8 +80,9 @@ class LabelListSerializer(serializers.ListSerializer):
             # bulk_create with ignore_conflicts doesn't return ids, reloading links
             project = labels[0].project
             label_ids = [label.id for label in result]
-            links = LabelLink.objects.filter(label_id__in=label_ids, project=project).all()
-            if links:
+            if links := LabelLink.objects.filter(
+                label_id__in=label_ids, project=project
+            ).all():
                 emit_webhooks_for_instance(self.context['request'].user.active_organization, links[0].project, 'LABEL_LINK_CREATED', links)
 
         return result

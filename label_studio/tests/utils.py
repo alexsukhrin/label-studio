@@ -278,15 +278,18 @@ def invite_client_to_project(client, project):
 
 def login(client, email, password):
     if User.objects.filter(email=email).exists():
-        r = client.post(f'/user/login/', data={'email': email, 'password': password})
-        assert r.status_code == 302, r.status_code
+        r = client.post('/user/login/', data={'email': email, 'password': password})
     else:
-        r = client.post(f'/user/signup/', data={'email': email, 'password': password, 'title': 'Whatever'})
-        assert r.status_code == 302, r.status_code
+        r = client.post(
+            '/user/signup/',
+            data={'email': email, 'password': password, 'title': 'Whatever'},
+        )
+
+    assert r.status_code == 302, r.status_code
 
 
 def signin(client, email, password):
-    return client.post(f'/user/login/', data={'email': email, 'password': password})
+    return client.post('/user/login/', data={'email': email, 'password': password})
 
 
 def _client_is_annotator(client):

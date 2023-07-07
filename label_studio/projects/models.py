@@ -75,7 +75,7 @@ class ProjectManager(models.Manager):
         else:
             to_annotate = {field: available_fields[field] for field in fields if field in available_fields}
 
-        for _, annotate_func in to_annotate.items():
+        for annotate_func in to_annotate.values():
             queryset = annotate_func(queryset)
 
         return queryset
@@ -440,9 +440,7 @@ class Project(ProjectMixin, models.Model):
     def advance_onboarding(self):
         """Move project to next onboarding step"""
         po_qs = self.steps_left.order_by('step__order')
-        count = po_qs.count()
-
-        if count:
+        if count := po_qs.count():
             po = po_qs.first()
             po.finished = True
             po.save()
@@ -484,7 +482,7 @@ class Project(ProjectMixin, models.Model):
         # validate data columns consistency
         fields_from_config = get_all_object_tag_names(config_string)
         if not fields_from_config:
-            logger.debug(f'Data fields not found in labeling config')
+            logger.debug('Data fields not found in labeling config')
             return
 
         #TODO: DEV-2939 Add validation for fields addition in label config
@@ -508,7 +506,7 @@ class Project(ProjectMixin, models.Model):
         # validate annotations consistency
         annotations_from_config = set(get_all_control_tag_tuples(config_string))
         if not annotations_from_config:
-            logger.debug(f'Annotation schema is not found in config')
+            logger.debug('Annotation schema is not found in config')
             return
         annotations_from_data = set(self.summary.created_annotations)
         if annotations_from_data and not annotations_from_data.issubset(annotations_from_config):
@@ -519,13 +517,13 @@ class Project(ProjectMixin, models.Model):
                 if t.lower() == 'textarea':  # avoid textarea to_name check (see DEV-1598)
                     continue
                 if not check_control_in_config_by_regex(config_string, from_name) or \
-                not check_toname_in_config_by_regex(config_string, to_name) or \
-                t not in get_all_types(config_string):
+                    not check_toname_in_config_by_regex(config_string, to_name) or \
+                    t not in get_all_types(config_string):
                     diff_str.append(
                         f'{self.summary.created_annotations[ann_tuple]} '
                         f'with from_name={from_name}, to_name={to_name}, type={t}'
                     )
-            if len(diff_str) > 0:
+            if diff_str:
                 diff_str = '\n'.join(diff_str)
                 raise LabelStudioValidationErrorSentryIgnored(
                     f'Created annotations are incompatible with provided labeling schema, we found:\n{diff_str}'
@@ -539,7 +537,7 @@ class Project(ProjectMixin, models.Model):
             # Check if labels created in annotations, and their control tag has been removed
             if labels_from_data and ((control_tag_from_data not in labels_from_config) and (
                     control_tag_from_data not in dynamic_label_from_config)) and \
-                    not check_control_in_config_by_regex(config_string, control_tag_from_data):
+                        not check_control_in_config_by_regex(config_string, control_tag_from_data):
                 raise LabelStudioValidationErrorSentryIgnored(
                     f'There are {sum(labels_from_data.values(), 0)} annotation(s) created with tag '
                     f'"{control_tag_from_data}", you can\'t remove it'
@@ -553,7 +551,7 @@ class Project(ProjectMixin, models.Model):
                     labels_from_config_by_tag |= set(labels_from_config[key])
             if 'Taxonomy' in tag_types:
                 custom_tags = Label.objects.filter(links__project=self).values_list('value', flat=True)
-                flat_custom_tags = set([item for sublist in custom_tags for item in sublist])
+                flat_custom_tags = {item for sublist in custom_tags for item in sublist}
                 labels_from_config_by_tag |= flat_custom_tags
             # check if labels from is subset if config labels
             if not set(labels_from_data).issubset(set(labels_from_config_by_tag)):
@@ -593,7 +591,7 @@ class Project(ProjectMixin, models.Model):
         return control_weights
 
     def save(self, *args, recalc=True, **kwargs):
-        exists = True if self.pk else False
+        exists = bool(self.pk)
         project_with_config_just_created = not exists and self.label_config
 
         if self._label_config_has_changed() or project_with_config_just_created:
@@ -640,11 +638,10 @@ class Project(ProjectMixin, models.Model):
             # project has defined team scope
             # TODO: avoid checking team but rather add all project members when creating a project
             return self.team_link.team.members.values_list('user', flat=True)
-        else:
-            from users.models import User
+        from users.models import User
 
-            # TODO: may want to return all users from organization
-            return User.objects.none()
+        # TODO: may want to return all users from organization
+        return User.objects.none()
 
     def has_team_user(self, user):
         return hasattr(self, 'team_link') and self.team_link.team.has_user(user)
@@ -715,7 +712,7 @@ class Project(ProjectMixin, models.Model):
         # finished tasks * overlap
         finished_tasks = Task.objects.filter(project=self.id, is_labeled=True)
         # one could make more than need to overlap
-        min_n_finished_annotations = sum([ft.overlap for ft in finished_tasks])
+        min_n_finished_annotations = sum(ft.overlap for ft in finished_tasks)
 
         annotations_unfinished_tasks = Annotation.objects.filter(
             project=self.id, task__is_labeled=False, ground_truth=False, result__isnull=False
@@ -731,9 +728,7 @@ class Project(ProjectMixin, models.Model):
         ).values('lead_time')
         avg_lead_time = finished_annotations.aggregate(avg_lead_time=Avg('lead_time'))['avg_lead_time']
 
-        if avg_lead_time is None:
-            return None
-        return avg_lead_time * annotations_remain
+        return None if avg_lead_time is None else avg_lead_time * annotations_remain
 
     def finished(self):
         return not self.tasks.filter(is_labeled=False).exists()
@@ -783,10 +778,7 @@ class Project(ProjectMixin, models.Model):
         output = {r['model_version']: r['count'] for r in model_versions}
         if self.model_version is not None and self.model_version not in output:
             output[self.model_version] = 0
-        if with_counters:
-            return output
-        else:
-            return list(output)
+        return output if with_counters else list(output)
 
     def get_all_storage_objects(self, type_='import'):
         from io_storages.models import get_storage_classes
@@ -1059,8 +1051,9 @@ class ProjectSummary(models.Model):
             )
             return None
         result_from_name = result['from_name']
-        key = get_annotation_tuple(result_from_name, result['to_name'], result_type or '')
-        return key
+        return get_annotation_tuple(
+            result_from_name, result['to_name'], result_type or ''
+        )
 
     def _get_labels(self, result):
         result_type = result.get('type')
@@ -1075,8 +1068,7 @@ class ProjectSummary(models.Model):
         labels = []
         for label in result_value:
             if result_type == 'taxonomy' and isinstance(label, list):
-                for label_ in label:
-                    labels.append(str(label_))
+                labels.extend(str(label_) for label_ in label)
             else:
                 labels.append(str(label))
         return labels
@@ -1099,7 +1091,7 @@ class ProjectSummary(models.Model):
 
                 # aggregate labels
                 if from_name not in self.created_labels:
-                    labels[from_name] = dict()
+                    labels[from_name] = {}
 
                 for label in self._get_labels(result):
                     labels[from_name][label] = labels[from_name].get(label, 0) + 1
@@ -1158,7 +1150,7 @@ class ProjectSummary(models.Model):
 
                 # aggregate labels
                 if from_name not in self.created_labels_drafts:
-                    labels[from_name] = dict()
+                    labels[from_name] = {}
 
                 for label in self._get_labels(result):
                     labels[from_name][label] = labels[from_name].get(label, 0) + 1

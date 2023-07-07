@@ -32,10 +32,10 @@ def find_node(package_name, node_path, node_type):
     search_by_path = '/' in node_path or '\\' in node_path
 
     for path, dirs, filenames in os.walk(basedir):
-        if node_type == 'file':
-            nodes = filenames
-        elif node_type == 'dir':
+        if node_type == 'dir':
             nodes = dirs
+        elif node_type == 'file':
+            nodes = filenames
         else:
             nodes = filenames + dirs
         if search_by_path:
@@ -46,9 +46,7 @@ def find_node(package_name, node_path, node_type):
         elif node_path in nodes:
             return os.path.join(path, node_path)
     else:
-        raise IOError(
-            'Could not find "%s" at package "%s"' % (node_path, basedir)
-        )
+        raise IOError(f'Could not find "{node_path}" at package "{basedir}"')
 
 
 def find_file(file):
@@ -95,7 +93,7 @@ def get_cache_dir():
 
 
 def delete_dir_content(dirpath):
-    for f in glob.glob(dirpath + '/*'):
+    for f in glob.glob(f'{dirpath}/*'):
         remove_file_or_dir(f)
 
 
@@ -125,10 +123,7 @@ def iter_files(root_dir, ext):
 def json_load(file, int_keys=False):
     with io.open(file, encoding='utf8') as f:
         data = json.load(f)
-        if int_keys:
-            return {int(k): v for k, v in data.items()}
-        else:
-            return data
+        return {int(k): v for k, v in data.items()} if int_keys else data
 
 
 def read_yaml(filepath):
@@ -186,7 +181,7 @@ def url_is_local(url):
             '172.16.0.0/12',
             '192.168.0.0/16',
         ]
-        for subnet in local_subnets:
-            if ipaddress.ip_address(ip) in ipaddress.ip_network(subnet):
-                return True
-        return False
+        return any(
+            ipaddress.ip_address(ip) in ipaddress.ip_network(subnet)
+            for subnet in local_subnets
+        )

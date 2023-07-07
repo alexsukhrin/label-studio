@@ -103,16 +103,11 @@ class OrganizationMemberListAPI(generics.ListAPIView):
         if flag_set('fix_backend_dev_3134_exclude_deactivated_users', self.request.user):
             serializer = OrganizationsParamsSerializer(data=self.request.GET)
             serializer.is_valid(raise_exception=True)
-            active = serializer.validated_data.get('active')
-            
-            # return only active users (exclude DISABLED and NOT_ACTIVATED)
-            if active:
+            if active := serializer.validated_data.get('active'):
                 return org.active_members.order_by('user__username')
-            
-            # organization page to show all members
-            return org.members.order_by('user__username')
-        else:
-            return org.members.order_by('user__username')
+
+        # organization page to show all members
+        return org.members.order_by('user__username')
 
 
 @method_decorator(name='get', decorator=swagger_auto_schema(
@@ -159,7 +154,7 @@ class OrganizationInviteAPI(generics.RetrieveAPIView):
 
     def get(self, request, *args, **kwargs):
         org = request.user.active_organization
-        invite_url = '{}?token={}'.format(reverse('user-signup'), org.token)
+        invite_url = f"{reverse('user-signup')}?token={org.token}"
         if hasattr(settings, 'FORCE_SCRIPT_NAME') and settings.FORCE_SCRIPT_NAME:
             invite_url = invite_url.replace(settings.FORCE_SCRIPT_NAME, '', 1)
         serializer = OrganizationInviteSerializer(data={'invite_url': invite_url, 'token': org.token})
@@ -181,7 +176,7 @@ class OrganizationResetTokenAPI(APIView):
         org = request.user.active_organization
         org.reset_token()
         logger.debug(f'New token for organization {org.pk} is {org.token}')
-        invite_url = '{}?token={}'.format(reverse('user-signup'), org.token)
+        invite_url = f"{reverse('user-signup')}?token={org.token}"
         serializer = OrganizationInviteSerializer(data={'invite_url': invite_url, 'token': org.token})
         serializer.is_valid()
         return Response(serializer.data, status=201)

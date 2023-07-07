@@ -31,7 +31,7 @@ def test_action_delete_all_tasks(tasks_count, annotations_count, predictions_cou
     project = Project.objects.get(pk=project_id)
     for _ in range(0, tasks_count):
         task_id = make_task({"data": {}}, project).id
-        print('TASK_ID: %s' % task_id)
+        print(f'TASK_ID: {task_id}')
         for _ in range(0, annotations_count):
             print('COMPLETION')
             make_annotation({"result": []}, task_id)
@@ -66,7 +66,7 @@ def test_action_delete_all_annotations(tasks_count, annotations_count, predictio
     project = Project.objects.get(pk=project_id)
     for _ in range(0, tasks_count):
         task_id = make_task({"data": {}}, project).id
-        print('TASK_ID: %s' % task_id)
+        print(f'TASK_ID: {task_id}')
         for _ in range(0, annotations_count):
             print('COMPLETION')
             make_annotation({"result": []}, task_id)

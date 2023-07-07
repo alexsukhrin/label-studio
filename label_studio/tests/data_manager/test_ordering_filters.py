@@ -56,11 +56,7 @@ def test_views_ordering(ordering, element_index, undefined, business_client, pro
 
     project = Project.objects.get(pk=project_id)
 
-    if undefined:
-        task_field_name = settings.DATA_UNDEFINED_NAME
-    else:
-        task_field_name = 'text'
-
+    task_field_name = settings.DATA_UNDEFINED_NAME if undefined else 'text'
     file_upload1 = FileUpload.objects.create(user=project.created_by, project=project, file=ContentFile('', name='file_upload1'))
 
     task_id_1 = make_task({"data": {task_field_name: 1}, 'file_upload': file_upload1}, project).id

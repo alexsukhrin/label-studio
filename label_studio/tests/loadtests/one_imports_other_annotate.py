@@ -16,10 +16,10 @@ def get_project_id(client):
         else:
             project_list = r.json()
             print(project_list)
-            ids = [p['id'] for p in project_list]
-            if not ids:
+            if ids := [p['id'] for p in project_list]:
+                return random.choice(ids)
+            else:
                 return
-            return random.choice(ids)
 
 
 def signup(client):
@@ -108,7 +108,7 @@ class Annotator(HttpUser):
 def randomString(stringLength):
     """Generate a random string of fixed length """
     letters = string.ascii_lowercase
-    return ''.join(random.choice(letters) for i in range(stringLength))
+    return ''.join(random.choice(letters) for _ in range(stringLength))
 
 
 @events.test_start.add_listener

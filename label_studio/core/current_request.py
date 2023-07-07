@@ -9,8 +9,7 @@ _thread_locals = local()
 
 def get_current_request():
     """ returns the request object for this thread """
-    result = getattr(_thread_locals, "request", None)
-    return result
+    return getattr(_thread_locals, "request", None)
 
 
 class ThreadLocalMiddleware(CommonMiddleware):

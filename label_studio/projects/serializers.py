@@ -63,7 +63,7 @@ class ProjectSerializer(FlexFieldsModelSerializer):
 
     def get_start_training_on_annotation_update(self, instance):
         # FIXME: remake this logic with start_training_on_annotation_update
-        return True if instance.min_annotations_to_start_training else False
+        return bool(instance.min_annotations_to_start_training)
 
     def to_internal_value(self, data):
         # FIXME: remake this logic with start_training_on_annotation_update

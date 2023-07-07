@@ -35,12 +35,10 @@ def is_binary(f):
 def csv_generate_header(file):
     """Generate column names for headless csv file"""
     file.seek(0)
-    names = []
     line = file.readline()
 
     num_columns = len(line.split(b',' if isinstance(line, bytes) else ','))
-    for i in range(num_columns):
-        names.append('column' + str(i + 1))
+    names = [f'column{str(i + 1)}' for i in range(num_columns)]
     file.seek(0)
     return names
 
@@ -69,7 +67,7 @@ def check_extensions(files):
 
 
 def check_request_files_size(files):
-    total = sum([file.size for _, file in files.items()])
+    total = sum(file.size for _, file in files.items())
 
     check_tasks_max_file_size(total)
 
@@ -115,8 +113,7 @@ def allowlist_svg(dirty_xml):
         remove_unknown_tags=False,
     )
 
-    clean_xml = cleaner.clean_html(dirty_xml)
-    return clean_xml
+    return cleaner.clean_html(dirty_xml)
 
 
 def str_to_json(data):
@@ -198,12 +195,9 @@ def load_tasks_for_async_import(project_import, user):
             project_import.project, file_upload_ids
         )
 
-    # take tasks from url address
     elif project_import.url:
         url = project_import.url
-        # try to load json with task or tasks from url as string
-        json_data = str_to_json(url)
-        if json_data:
+        if json_data := str_to_json(url):
             file_upload = create_file_upload(
                 user,
                 project_import.project,
@@ -214,7 +208,6 @@ def load_tasks_for_async_import(project_import, user):
                 project_import.project, file_upload_ids
             )
 
-        # download file using url and read tasks from it
         else:
             if settings.SSRF_PROTECTION_ENABLED and url_is_local(url):
                 raise ImportFromLocalIPError
@@ -269,16 +262,13 @@ def load_tasks(request, project):
             project, file_upload_ids
         )
 
-    # take tasks from url address
     elif 'application/x-www-form-urlencoded' in request.content_type:
         # empty url
         url = request.data.get('url')
         if not url:
             raise ValidationError('"url" is not found in request data')
 
-        # try to load json with task or tasks from url as string
-        json_data = str_to_json(url)
-        if json_data:
+        if json_data := str_to_json(url):
             file_upload = create_file_upload(
                 request.user, project, SimpleUploadedFile('inplace.json', url.encode())
             )
@@ -287,7 +277,6 @@ def load_tasks(request, project):
                 project, file_upload_ids
             )
 
-        # download file using url and read tasks from it
         else:
             if settings.SSRF_PROTECTION_ENABLED and url_is_local(url):
                 raise ImportFromLocalIPError
@@ -305,15 +294,12 @@ def load_tasks(request, project):
                 file_upload_ids, project, request.user, url, could_be_tasks_list
             )
 
-    # take one task from request DATA
     elif 'application/json' in request.content_type and isinstance(request.data, dict):
         tasks = [request.data]
 
-    # take many tasks from request DATA
     elif 'application/json' in request.content_type and isinstance(request.data, list):
         tasks = request.data
 
-    # incorrect data source
     else:
         raise ValidationError('load_tasks: No data found in DATA or in FILES')
 

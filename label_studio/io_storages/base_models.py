@@ -249,10 +249,7 @@ class ImportStorage(Storage):
         # TODO: later check to the full prefix like "url.startswith(self.path_full)"
         # Search of occurrences inside string, e.g. for cases like "gs://bucket/file.pdf" or "<embed src='gs://bucket/file.pdf'/>"  # noqa
         _, prefix = get_uri_via_regex(url, prefixes=(self.url_scheme,))
-        if prefix == self.url_scheme:
-            return True
-        # if not found any occurrences - this Storage can't resolve url
-        return False
+        return prefix == self.url_scheme
 
     def resolve_uri(self, uri, task=None):
         #  list of objects
@@ -461,9 +458,7 @@ class ProjectStorageMixin(models.Model):
 
     def has_permission(self, user):
         user.project = self.project  # link for activity log
-        if self.project.has_permission(user):
-            return True
-        return False
+        return bool(self.project.has_permission(user))
 
     class Meta:
         abstract = True
@@ -514,10 +509,9 @@ class ExportStorage(Storage, ProjectStorageMixin):
             # TODO: we have to rewrite save_all_annotations, because this func will be called for each annotation
             # TODO: instead of each task, however, we have to call it only once per task
             return ExportDataSerializer(annotation.task).data
-        else:
-            serializer_class = load_func(settings.STORAGE_ANNOTATION_SERIALIZER)
-            # deprecated functionality - save only annotation
-            return serializer_class(annotation, context={'project': self.project}).data
+        serializer_class = load_func(settings.STORAGE_ANNOTATION_SERIALIZER)
+        # deprecated functionality - save only annotation
+        return serializer_class(annotation, context={'project': self.project}).data
 
     def save_annotation(self, annotation):
         raise NotImplementedError
@@ -605,7 +599,11 @@ class ExportStorageLink(models.Model):
     @staticmethod
     def get_key(annotation):
         if settings.FUTURE_SAVE_TASK_TO_STORAGE:
-            return str(annotation.task.id) + '.json' if settings.FUTURE_SAVE_TASK_TO_STORAGE_JSON_EXT else ''
+            return (
+                f'{str(annotation.task.id)}.json'
+                if settings.FUTURE_SAVE_TASK_TO_STORAGE_JSON_EXT
+                else ''
+            )
         return str(annotation.id)
 
     @property
@@ -626,9 +624,7 @@ class ExportStorageLink(models.Model):
 
     def has_permission(self, user):
         user.project = self.annotation.project  # link for activity log
-        if self.annotation.has_permission(user):
-            return True
-        return False
+        return bool(self.annotation.has_permission(user))
 
     class Meta:
         abstract = True

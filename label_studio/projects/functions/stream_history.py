@@ -9,19 +9,20 @@ ANNOTATION_ID_KEY = 'annotationId'
 
 
 def add_stream_history(next_task, user, project):
-    if next_task is not None:
-        with transaction.atomic():
-            history, created = LabelStreamHistory.objects.get_or_create(user=user, project=project)
-            new_history_data = {TASK_ID_KEY: next_task.id, ANNOTATION_ID_KEY: None}
-            if created:
-                history.data = [new_history_data]
-            else:
-                task_ids = set([h[TASK_ID_KEY] for h in history.data])
-                if next_task.id not in task_ids:
-                    history.data.append(new_history_data)
-                if len(task_ids) + 1 > settings.LABEL_STREAM_HISTORY_LIMIT:
-                    history.data = history.data[-settings.LABEL_STREAM_HISTORY_LIMIT:]
-            history.save()
+    if next_task is None:
+        return
+    with transaction.atomic():
+        history, created = LabelStreamHistory.objects.get_or_create(user=user, project=project)
+        new_history_data = {TASK_ID_KEY: next_task.id, ANNOTATION_ID_KEY: None}
+        if created:
+            history.data = [new_history_data]
+        else:
+            task_ids = {h[TASK_ID_KEY] for h in history.data}
+            if next_task.id not in task_ids:
+                history.data.append(new_history_data)
+            if len(task_ids) + 1 > settings.LABEL_STREAM_HISTORY_LIMIT:
+                history.data = history.data[-settings.LABEL_STREAM_HISTORY_LIMIT:]
+        history.save()
 
 
 def fill_history_annotation(user, task, annotation):
@@ -43,8 +44,8 @@ def get_label_stream_history(user, project):
 
         data = history.data
 
-        task_ids = set([h[TASK_ID_KEY] for h in history.data])
-        annotation_ids = set([h[ANNOTATION_ID_KEY] for h in history.data])
+        task_ids = {h[TASK_ID_KEY] for h in history.data}
+        annotation_ids = {h[ANNOTATION_ID_KEY] for h in history.data}
         existing_task_ids = set(Task.objects.filter(pk__in=task_ids).values_list('id', flat=True))
         existing_annotation_ids = set(Annotation.objects.filter(pk__in=annotation_ids).values_list('id', flat=True))
 

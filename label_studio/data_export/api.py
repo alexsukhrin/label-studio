@@ -192,7 +192,7 @@ class ExportAPI(generics.RetrieveAPIView):
         )
 
         response = HttpResponse(File(export_stream), content_type=content_type)
-        response['Content-Disposition'] = 'attachment; filename="%s"' % filename
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
         response['filename'] = filename
         return response
 
@@ -300,11 +300,10 @@ class ExportListAPI(generics.ListCreateAPIView):
 
     def _get_project(self):
         project_pk = self.kwargs.get('pk')
-        project = generics.get_object_or_404(
+        return generics.get_object_or_404(
             self.project_model.objects.for_user(self.request.user),
             pk=project_pk,
         )
-        return project
 
     def perform_create(self, serializer):
         task_filter_options = serializer.validated_data.pop('task_filter_options')
@@ -397,20 +396,18 @@ class ExportDetailAPI(generics.RetrieveDestroyAPIView):
                 return Response(
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     data={
-                        'detail':
-                            'Could not delete file from storage. Check that your user has permissions to delete files: %s' % str(e)
-                    }
+                        'detail': f'Could not delete file from storage. Check that your user has permissions to delete files: {str(e)}'
+                    },
                 )
 
         return super().delete(*args, **kwargs)
 
     def _get_project(self):
         project_pk = self.kwargs.get('pk')
-        project = generics.get_object_or_404(
+        return generics.get_object_or_404(
             self.project_model.objects.for_user(self.request.user),
             pk=project_pk,
         )
-        return project
 
     def get_queryset(self):
         project = self._get_project()
@@ -459,11 +456,10 @@ class ExportDownloadAPI(generics.RetrieveAPIView):
 
     def _get_project(self):
         project_pk = self.kwargs.get('pk')
-        project = generics.get_object_or_404(
+        return generics.get_object_or_404(
             self.project_model.objects.for_user(self.request.user),
             pk=project_pk,
         )
-        return project
 
     def get_queryset(self):
         project = self._get_project()
@@ -495,19 +491,13 @@ class ExportDownloadAPI(generics.RetrieveAPIView):
                 # let NGINX handle it
                 response = HttpResponse()
                 # below header tells NGINX to catch it and serve, see docker-config/nginx-app.conf
-                redirect = '/file_download/' + protocol + '/' + url.replace(protocol + '://', '')
+                redirect = f'/file_download/{protocol}/' + url.replace(f'{protocol}://', '')
                 response['X-Accel-Redirect'] = redirect
-                response['Content-Disposition'] = 'attachment; filename="{}"'.format(file.name)
-                response['filename'] = os.path.basename(file.name)
-                return response
-
-            # No NGINX: standard way for export downloads in the community edition
             else:
                 ext = file.name.split('.')[-1]
                 response = RangedFileResponse(request, file, content_type=f'application/{ext}')
-                response['Content-Disposition'] = f'attachment; filename="{file.name}"'
-                response['filename'] = os.path.basename(file.name)
-                return response
+            response['Content-Disposition'] = f'attachment; filename="{file.name}"'
+            response['filename'] = os.path.basename(file.name)
         else:
             if export_type is None:
                 file_ = snapshot.file
@@ -522,7 +512,8 @@ class ExportDownloadAPI(generics.RetrieveAPIView):
             response = RangedFileResponse(request, file_, content_type=f'application/{ext}')
             response['Content-Disposition'] = f'attachment; filename="{file_.name}"'
             response['filename'] = file_.name
-            return response
+
+        return response
 
 
 def async_convert(converted_format_id, export_type, project, **kwargs):
@@ -546,7 +537,7 @@ def async_convert(converted_format_id, export_type, project, **kwargs):
     ext = converted_file.name.split('.')[-1]
 
     now = datetime.now()
-    file_name = f'project-{project.id}-at-{now.strftime("%Y-%m-%d-%H-%M")}-{md5[0:8]}.{ext}'
+    file_name = f'project-{project.id}-at-{now.strftime("%Y-%m-%d-%H-%M")}-{md5[:8]}.{ext}'
     file_path = (
         f'{project.id}/{file_name}'
     )  # finally file will be in settings.DELAYED_EXPORT_DIR/project.id/file_name

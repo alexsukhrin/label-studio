@@ -30,7 +30,7 @@ def _get_random_unlocked(task_query, user, upper_limit=None):
             if not task.has_lock(user):
                 return task
         except Task.DoesNotExist:
-            logger.debug('Task with id {} locked'.format(task.id))
+            logger.debug(f'Task with id {task.id} locked')
 
 
 def _get_first_unlocked(tasks_query, user):
@@ -42,7 +42,7 @@ def _get_first_unlocked(tasks_query, user):
                 return task
 
         except Task.DoesNotExist:
-            logger.debug('Task with id {} locked'.format(task_id))
+            logger.debug(f'Task with id {task_id} locked')
 
 
 def _try_ground_truth(tasks, project, user):
@@ -118,21 +118,24 @@ def _try_uncertainty_sampling(tasks, project, user_solved_tasks_array, user, pre
             possible_next_tasks = task_with_current_predictions.order_by('predictions__score')
 
         num_annotators = project.annotators().count()
-        if num_annotators > 1 and num_tasks_with_current_predictions > 0:
-            # try to randomize tasks to avoid concurrent labeling between several annotators
-            next_task = _get_random_unlocked(
-                possible_next_tasks, user, upper_limit=min(num_annotators + 1, num_tasks_with_current_predictions)
+        return (
+            _get_random_unlocked(
+                possible_next_tasks,
+                user,
+                upper_limit=min(
+                    num_annotators + 1, num_tasks_with_current_predictions
+                ),
             )
-        else:
-            next_task = _get_first_unlocked(possible_next_tasks, user)
+            if num_annotators > 1 and num_tasks_with_current_predictions > 0
+            else _get_first_unlocked(possible_next_tasks, user)
+        )
     else:
         # uncertainty sampling fallback: choose by random sampling
         logger.debug(
             f'Uncertainty sampling fallbacks to random sampling '
             f'(current project.model_version={str(project.model_version)})'
         )
-        next_task = _get_random_unlocked(tasks, user)
-    return next_task
+        return _get_random_unlocked(tasks, user)
 
 
 def get_not_solved_tasks_qs(user, project, prepared_tasks, assigned_flag, queue_info):
@@ -222,7 +225,7 @@ def postponed_queue(next_task, prepared_tasks, project, user, queue_info):
             next_task = _get_first_unlocked(postponed_tasks, user)
             if next_task is not None:
                 next_task.allow_postpone = False
-            queue_info = f'Postponed draft queue'
+            queue_info = 'Postponed draft queue'
 
     return next_task, queue_info
 
@@ -338,8 +341,6 @@ def get_next_task(user, prepared_tasks, project, dm_queue, assigned_flag=None):
                                  f'NEXT_TASK ==> {task}')
             except Exception as e:
                 logger.error(f'get_next_task is_labeled/overlap try/except: {str(e)}')
-                pass
-
         add_stream_history(next_task, user, project)
         return next_task, queue_info
 

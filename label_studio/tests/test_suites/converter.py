@@ -53,20 +53,18 @@ with open(old_test) as f:
                                     if 'files' not in request_data:
                                         request_data['files'] = {}
                                     request_data['files'][k] = f'tests/test_suites/{v}'
+                                elif content_type and 'json' in content_type:
+                                    if 'json' not in request_data:
+                                        request_data['json'] = {}
+                                    request_data['json'][k] = v
                                 else:
-                                    if content_type and 'json' in content_type:
-                                        if 'json' not in request_data:
-                                            request_data['json'] = {}
-                                        request_data['json'][k] = v
-                                    else:
-                                        if 'data' not in request_data:
-                                            request_data['data'] = {}
-                                        request_data['data'][k] = v
+                                    if 'data' not in request_data:
+                                        request_data['data'] = {}
+                                    request_data['data'][k] = v
+                        elif content_type and 'json' in content_type:
+                            request_data['json'] = stage_data['data']
                         else:
-                            if content_type and 'json' in content_type:
-                                request_data['json'] = stage_data['data']
-                            else:
-                                request_data['data'] = stage_data['data']
+                            request_data['data'] = stage_data['data']
 
                     if 'content_type' in stage_data:
                         request_data['headers'] = {'content-type': stage_data['content_type']}
@@ -75,12 +73,12 @@ with open(old_test) as f:
                     if 'response' in stage_data and isinstance(stage_data['response'], dict):
                         for k, v in stage_data['response'].items():
                             if isinstance(v, str) and v.startswith('{'):
-                                if not 'save' in response_data:
+                                if 'save' not in response_data:
                                     response_data['save'] = {'json': {}}
                                 key = v.replace('{', '').replace('}', '')
                                 response_data['save']['json'][key] = k
                             else:
-                                if not 'json' in response_data:
+                                if 'json' not in response_data:
                                     response_data['json'] = {}
                                 response_data['json'][k] = v
 

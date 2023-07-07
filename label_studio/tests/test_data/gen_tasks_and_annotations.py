@@ -24,14 +24,13 @@ task_template_end = """],"data":{"text":"Но тут же раздался уж�
 
 
 def gen_tasks(user_id):
-    i = 11
     tasks_n = 1000
 
     j = 80
     annotations_n = 5
 
     tasks = []
-    for t in range(tasks_n):
+    for i, t in enumerate(range(tasks_n), start=11):
         tasks.append(task_template_start % i)
         for c in range(annotations_n):
             tasks.append(tc_template % (j, r.choices(label_choices)[0], user_id))
@@ -41,8 +40,6 @@ def gen_tasks(user_id):
         tasks.append(task_template_end)
         if t < tasks_n - 1:
             tasks.append(',')
-        i += 1
-
     with open(os.path.join(settings.TEST_DATA_ROOT, 'tasks_and_annotations.json'), 'w+', encoding='utf-8') as f:
         f.write('[' + ''.join(tasks) + ']')
 

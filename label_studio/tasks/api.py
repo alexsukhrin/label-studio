@@ -87,8 +87,7 @@ class TaskListAPI(DMTaskListAPI):
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
-        project_id = self.request.data.get('project')
-        if project_id:
+        if project_id := self.request.data.get('project'):
             context['project'] = generics.get_object_or_404(Project, pk=project_id)
         return context
 
@@ -392,10 +391,7 @@ class AnnotationsListAPI(GetParentObjectMixin, generics.ListCreateAPIView):
                 logger.debug(f'User={self.request.user}: there are no predictions for task={task}')
                 prediction_ser = {}
             # serialize annotation
-            extra_args.update({
-                'prediction': prediction_ser,
-                'updated_by': user
-            })
+            extra_args |= {'prediction': prediction_ser, 'updated_by': user}
 
         if 'was_cancelled' in self.request.GET:
             extra_args['was_cancelled'] = bool_from_request(self.request.GET, 'was_cancelled', False)

@@ -17,12 +17,11 @@ def update_storage(storage):
         # import source storages
         if 'import' in storage._meta.label_lower:
             count = instance.links.count() - instance.last_sync_count if instance.last_sync_count else 0
-            instance.meta['tasks_existed'] = count if count > 0 else 0
+            instance.meta['tasks_existed'] = max(count, 0)
             if instance.meta['tasks_existed'] and instance.meta['tasks_existed'] > 0:
                 instance.status = 'completed'
             logger.info(f'{prefix} tasks_existed = {instance.meta["tasks_existed"]}')
 
-        # target export storages
         else:
             instance.meta['total_annotations'] = instance.last_sync_count
             if instance.last_sync_count and instance.last_sync_count > 0:

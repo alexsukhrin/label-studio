@@ -63,9 +63,8 @@ def _read_py(ls=False):
 
         if version_module:
             return version_module.info
-        else:
-            logging.warning(f"Can't read version file: {VERSION_FILE}")
-            return {}
+        logging.warning(f"Can't read version file: {VERSION_FILE}")
+        return {}
     finally:
         os.chdir(cwd)  # back to current dir
 
@@ -100,7 +99,7 @@ def get_git_commit_info(skip_os=True, ls=False):
             with open('/etc/os-release') as f:
                 os_version = ''.join(str(s).split("=", 1)[1].rstrip().strip('"').replace('.', '')
                                      for s in f if str(s).startswith(keys))
-                version += '.' + os_version
+                version += f'.{os_version}'
         info['version'] = VERSION_OVERRIDE if VERSION_OVERRIDE else version
 
         _write_py(info)

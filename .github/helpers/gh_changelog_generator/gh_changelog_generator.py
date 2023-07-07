@@ -228,7 +228,9 @@ def get_aha_release_features(release_num: str) -> list[AhaFeature]:
 
 
 def get_aha_release_features_by_tag(tag: str) -> list[AhaFeature]:
-    features = aha_client.paginate(f'api/v1/features', 'features', data={"tag": tag})
+    features = aha_client.paginate(
+        'api/v1/features', 'features', data={"tag": tag}
+    )
     tasks = set()
     for feature in features:
         if task := get_task(feature.get('reference_num')):
@@ -261,12 +263,12 @@ def get_github_release_tasks(commits) -> list[AhaFeature]:
     for commit in commits:
         message_first_line = commit.commit.message.split("\n")[0]
         if (match := re.match(COMMIT_PATTERN, message_first_line)) is not None:
-            label = match.group(1)
+            label = match[1]
             if label in COMMIT_LABEL_MAP.keys():
-                task_key = match.group(2)
+                task_key = match[2]
                 pr = None
                 try:
-                    pr = int(match.group(5))
+                    pr = int(match[5])
                 except Exception as e:
                     print(f'Could no parse pr from "{message_first_line}": {str(e)}')
                 if task := get_task(task_key, pr):
@@ -286,19 +288,18 @@ def get_feature_flags() -> list[str]:
             },
             timeout=30,
         )
-        for key, flag in response.json().get('flags', {}).items():
-            if not flag.get('on'):
-                result.append(
-                    f'- [{key}]'
-                    f'(https://app.launchdarkly.com/default/{LAUNCHDARKLY_ENVIRONMENT}/features/{key}/targeting)')
+        result.extend(
+            f'- [{key}](https://app.launchdarkly.com/default/{LAUNCHDARKLY_ENVIRONMENT}/features/{key}/targeting)'
+            for key, flag in response.json().get('flags', {}).items()
+            if not flag.get('on')
+        )
     return result
 
 
 def missing_tasks(left: list[AhaFeature], right: list[AhaFeature]) -> list[AhaFeature]:
     r_keys = [x.key for x in right]
     missing = [task for task in left if task.key not in r_keys]
-    missing_sorted = sorted(missing, key=lambda x: int(x.key.split('-')[-1]))
-    return missing_sorted
+    return sorted(missing, key=lambda x: int(x.key.split('-')[-1]))
 
 
 def sort_task_by_label(tasks: list[AhaFeature]) -> dict[str, list[AhaFeature]]:
@@ -309,10 +310,7 @@ def sort_task_by_label(tasks: list[AhaFeature]) -> dict[str, list[AhaFeature]]:
 
 
 def render_tasks_md(tasks: list[AhaFeature]) -> list[str]:
-    result = []
-    for task in tasks:
-        result.append(f'- {task.desc} [{task.key}]({task.link})')
-    return result
+    return [f'- {task.desc} [{task.key}]({task.link})' for task in tasks]
 
 
 def render_add_quote_md(lines: list[str]) -> list[str]:
@@ -320,18 +318,18 @@ def render_add_quote_md(lines: list[str]) -> list[str]:
 
 
 def render_add_spoiler_md(title: str, lines: list[str]) -> list[str]:
-    result = ["<details>", f"<summary>{title}</summary>", ""]
-    result.extend(lines)
-    result.append("")
-    result.append("</details>")
-    return result
+    return [
+        "<details>",
+        f"<summary>{title}</summary>",
+        "",
+        *lines,
+        "",
+        "</details>",
+    ]
 
 
 def render_add_header_md(title: str, lines: list[str]) -> list[str]:
-    result = [f"### {title}"]
-    result.extend(lines)
-    result.append('')
-    return result
+    return [f"### {title}", *lines, '']
 
 
 def render_output_md(
@@ -355,24 +353,24 @@ def render_output_md(
             )
         )
 
-    comment = []
+    comment = [
+        f'Full Changelog: [{PREVIOUS_REF}...{RELEASE_VERSION}]({gh_release.diff_url})',
+        f'This changelog was updated in response to a push of {CURRENT_REF} [Workflow run]({WORKFLOW_RUN_LINK})',
+        '',
+    ]
 
-    comment.append(f'Full Changelog: [{PREVIOUS_REF}...{RELEASE_VERSION}]({gh_release.diff_url})')
-    comment.append(
-        f'This changelog was updated in response to a push of {CURRENT_REF} [Workflow run]({WORKFLOW_RUN_LINK})')
-    comment.append('')
     if jira_release:
         comment.append(
             f'[Jira Release {RELEASE_VERSION}]({JIRA_SERVER}/projects/{JIRA_PROJECT}/versions/'
             f'{jira_release.id}/tab/release-report-all-issues)')
     else:
-        comment.append(f'Jira Release not found')
+        comment.append('Jira Release not found')
     if aha_release:
         comment.append(f'[Aha! Release {RELEASE_VERSION}]({aha_release.get("url", "")})')
     else:
-        comment.append(f'Aha! Release not found')
+        comment.append('Aha! Release not found')
 
-    if len(missing_in_tracker) == 0:
+    if not missing_in_tracker:
         comment.append('Release Notes are generated based on git log: No tasks found in Task Tracker.')
     else:
         comment.append('Release Notes are generated based on Task Tracker.')
@@ -406,9 +404,7 @@ def render_output_md(
             )
         )
 
-    comment.append('')
-    comment.append('**ALL LINES STARTING FROM QUOTE WILL BE IGNORED**')
-
+    comment.extend(('', '**ALL LINES STARTING FROM QUOTE WILL BE IGNORED**'))
     release_notes_lines.extend(
         render_add_quote_md(comment)
     )
@@ -419,13 +415,11 @@ def render_output_md(
 def render_output_json(
         sorted_release_tasks: dict[str, list[AhaFeature]],
 ) -> dict:
-    sorted_release_tasks_json = {}
-    for label, tasks in sorted_release_tasks.items():
-        sorted_release_tasks_json[label] = [t.__dict__() for t in tasks]
-    result = {
-        'sorted_release_tasks': sorted_release_tasks_json
+    sorted_release_tasks_json = {
+        label: [t.__dict__() for t in tasks]
+        for label, tasks in sorted_release_tasks.items()
     }
-    return result
+    return {'sorted_release_tasks': sorted_release_tasks_json}
 
 
 def main():
@@ -445,13 +439,12 @@ def main():
             aha_release_features = get_aha_release_features(aha_release.get("reference_num", None))
             print(f"Aha! Release {aha_release.get('url', '')}")
         else:
-            print(f"Aha! Release not found")
+            print("Aha! Release not found")
+    elif AHA_TAG:
+        aha_release = {'url': f'{AHA_SERVER}/api/v1/features?tag={AHA_TAG.replace(" ", "%20")}'}
+        aha_release_features = get_aha_release_features_by_tag(AHA_TAG)
     else:
-        if AHA_TAG:
-            aha_release = {'url': f'{AHA_SERVER}/api/v1/features?tag={AHA_TAG.replace(" ", "%20")}'}
-            aha_release_features = get_aha_release_features_by_tag(AHA_TAG)
-        else:
-            print("AHA TAG is not specified")
+        print("AHA TAG is not specified")
 
     jira_release = get_jira_release(JIRA_PROJECT, RELEASE_VERSION)
     jira_release_issues = []
@@ -461,7 +454,7 @@ def main():
             f"Jira Release {JIRA_SERVER}/projects/{JIRA_PROJECT}/versions/"
             f"{jira_release.id}/tab/release-report-all-issues]")
     else:
-        print(f"Jira Release not found")
+        print("Jira Release not found")
 
     tracker_release_tasks = jira_release_issues + aha_release_features
 
@@ -471,14 +464,13 @@ def main():
         sorted_release_tasks = sort_task_by_label(tracker_release_tasks)
         missing_in_gh = missing_tasks(tracker_release_tasks, gh_release_tasks)
         missing_in_tracker = missing_tasks(gh_release_tasks, tracker_release_tasks)
-        missing_release_note_field = [x for x in tracker_release_tasks if not x.release_note]
     else:
-        print(f"No tasks found in Task Tracker")
+        print("No tasks found in Task Tracker")
         print("Using GitHub as a source")
         sorted_release_tasks = sort_task_by_label(gh_release_tasks)
         missing_in_gh = []
         missing_in_tracker = []
-        missing_release_note_field = [x for x in tracker_release_tasks if not x.release_note]
+    missing_release_note_field = [x for x in tracker_release_tasks if not x.release_note]
     turned_off_feature_flags = []
     try:
         turned_off_feature_flags = get_feature_flags()
@@ -500,7 +492,7 @@ def main():
             print(f"Creating a markdown output file: '{OUTPUT_FILE_MD}'")
             f.write(output_md)
     else:
-        print(f"OUTPUT_FILE_MD is not specified")
+        print("OUTPUT_FILE_MD is not specified")
     print(output_md)
 
     output_json = render_output_json(sorted_release_tasks)
@@ -509,7 +501,7 @@ def main():
             print(f"Creating a json output file: '{OUTPUT_FILE_JSON}'")
             json.dump(output_json, f)
     else:
-        print(f"OUTPUT_FILE_JSON is not specified")
+        print("OUTPUT_FILE_JSON is not specified")
     print(output_json)
 
 

@@ -10,7 +10,7 @@ from locust import HttpUser, TaskSet, task, between
 def randomString(stringLength):
     """Generate a random string of fixed length """
     letters = string.ascii_lowercase
-    return ''.join(random.choice(letters) for i in range(stringLength))
+    return ''.join(random.choice(letters) for _ in range(stringLength))
 
 
 all_labels = ['Person', 'Organization', 'Fact', 'Money', 'Date', 'Time', 'Ordinal', 'Percent', 'Product', 'Language',
@@ -20,19 +20,19 @@ all_labels = ['Person', 'Organization', 'Fact', 'Money', 'Date', 'Time', 'Ordina
 def get_result(text):
     start = random.randint(0, len(text))
     end = min(len(text), start + random.randint(3, 30))
-    results = []
-    for i in range(random.randint(1, 10)):
-        results.append({
+    return [
+        {
             'type': 'labels',
             'from_name': 'ner',
             'to_name': 'text',
             'value': {
                 'labels': [random.choice(all_labels)],
                 'start': start,
-                'end': end
-            }
-        })
-    return results
+                'end': end,
+            },
+        }
+        for _ in range(random.randint(1, 10))
+    ]
 
 
 class UserWorksWithProject(TaskSet):

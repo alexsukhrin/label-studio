@@ -18,7 +18,7 @@ def start_fix():
     filename = 'sqlite-dll-win64-x64-3350500.zip' if platform.architecture()[0] == '64bit' \
         else 'sqlite-dll-win32-x86-3350500.zip'
 
-    url = 'https://www.sqlite.org/2021/' + filename
+    url = f'https://www.sqlite.org/2021/{filename}'
 
     src = os.path.join(work_dir, 'sqlite.zip')
     try:
@@ -26,7 +26,9 @@ def start_fix():
             resp = requests.get(url, verify=False)  # nosec
             f_out.write(resp.content)
     except Exception as e:
-        print(colorama.Fore.LIGHTRED_EX + f"\nCan't download sqlite.zip: {e}\nPlease, download it manually and extract in the current directory:\n" + url)
+        print(
+            f"{colorama.Fore.LIGHTRED_EX}\nCan't download sqlite.zip: {e}\nPlease, download it manually and extract in the current directory:\n{url}"
+        )
         print(colorama.Fore.WHITE)
         exit()
 
@@ -41,8 +43,8 @@ def start_fix():
 
 def windows_dll_fix():
     """ Copy sqlite.dll to the current directory and use it """
-    auto_agree = any([a == '--agree-fix-sqlite' for a in sys.argv])
-    force_fix = any([a == '--force-fix-sqlite' for a in sys.argv])
+    auto_agree = any(a == '--agree-fix-sqlite' for a in sys.argv)
+    force_fix = any(a == '--force-fix-sqlite' for a in sys.argv)
 
     # check if it is not on windows
     if sys.platform != 'win32':
@@ -55,7 +57,7 @@ def windows_dll_fix():
     os.environ['PATH'] = path_to_dll + os.pathsep + os.environ['PATH']
     try:
         ctypes.CDLL(os.path.join(path_to_dll, 'sqlite3.dll'))
-        print('Add current directory to PATH for DLL search: ' + path_to_dll)
+        print(f'Add current directory to PATH for DLL search: {path_to_dll}')
     except OSError:
         print("Can't load sqlite3.dll from current directory")
 

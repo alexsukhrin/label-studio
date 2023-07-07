@@ -194,10 +194,8 @@ class ExportMixin:
                 .values_list('id', flat=True)
             )
             base_export_serializer_option = self._get_export_serializer_option(serialization_options)
-            i = 0
             BATCH_SIZE = 1000
-            for ids in batch(task_ids, BATCH_SIZE):
-                i += 1
+            for i, ids in enumerate(batch(task_ids, BATCH_SIZE), start=1):
                 tasks = list(self.get_task_queryset(ids, annotation_filter_options))
                 logger.debug(f'Batch: {i*BATCH_SIZE}')
                 if isinstance(task_filter_options, dict) and task_filter_options.get('only_with_annotations'):
@@ -205,23 +203,20 @@ class ExportMixin:
 
                 serializer = ExportDataSerializer(tasks, many=True, **base_export_serializer_option)
                 self.counters['task_number'] += len(tasks)
-                for task in serializer.data:
-                    yield task
+                yield from serializer.data
 
     @staticmethod
     def eval_md5(file):
         md5_object = hashlib.md5()   # nosec
         block_size = 128 * md5_object.block_size
-        chunk = file.read(block_size)
-        while chunk:
+        while chunk := file.read(block_size):
             md5_object.update(chunk)
-            chunk = file.read(block_size)
         md5 = md5_object.hexdigest()
         return md5
 
     def save_file(self, file, md5):
         now = datetime.now()
-        file_name = f'project-{self.project.id}-at-{now.strftime("%Y-%m-%d-%H-%M")}-{md5[0:8]}.json'
+        file_name = f'project-{self.project.id}-at-{now.strftime("%Y-%m-%d-%H-%M")}-{md5[:8]}.json'
         file_path = (
             f'{self.project.id}/{file_name}'
         )  # finally file will be in settings.DELAYED_EXPORT_DIR/self.project.id/file_name
@@ -323,8 +318,8 @@ class ExportMixin:
                 filename = pathlib.Path(input_name).stem + pathlib.Path(output_file).suffix
             else:
                 shutil.make_archive(out_dir, 'zip', out_dir)
-                output_file = pathlib.Path(tmp_dir) / (str(out_dir.stem) + '.zip')
-                filename = pathlib.Path(input_name).stem + '.zip'
+                output_file = pathlib.Path(tmp_dir) / f'{str(out_dir.stem)}.zip'
+                filename = f'{pathlib.Path(input_name).stem}.zip'
 
             out = read_bytes_stream(output_file)
             return File(

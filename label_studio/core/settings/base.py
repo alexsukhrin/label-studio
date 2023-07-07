@@ -1,5 +1,6 @@
 """This file and its contents are licensed under the Apache License 2.0. Please see the included NOTICE for copyright information and LICENSE for a copy of the license.
 """
+
 """
 Django Base settings for Label Studio.
 
@@ -17,11 +18,8 @@ import json
 from datetime import timedelta
 from label_studio.core.utils.params import get_bool_env, get_env
 
-formatter = 'standard'
 JSON_LOG = get_bool_env('JSON_LOG', False)
-if JSON_LOG:
-    formatter = 'json'
-
+formatter = 'json' if JSON_LOG else 'standard'
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -80,9 +78,7 @@ from label_studio.core.utils.params import get_bool_env, get_env, get_env_list_i
 logger = logging.getLogger(__name__)
 SILENCED_SYSTEM_CHECKS = []
 
-# Hostname is used for proper path generation to the resources, pages, etc
-HOSTNAME = get_env('HOST', '')
-if HOSTNAME:
+if HOSTNAME := get_env('HOST', ''):
     if not HOSTNAME.startswith('http://') and not HOSTNAME.startswith('https://'):
         logger.info(
             "! HOST variable found in environment, but it must start with http:// or https://, ignore it: %s", HOSTNAME
@@ -91,15 +87,14 @@ if HOSTNAME:
     else:
         logger.info("=> Hostname correctly is set to: %s", HOSTNAME)
         if HOSTNAME.endswith('/'):
-            HOSTNAME = HOSTNAME[0:-1]
+            HOSTNAME = HOSTNAME[:-1]
 
         # for django url resolver
         if HOSTNAME:
             # http[s]://domain.com:8080/script_name => /script_name
             pattern = re.compile(r'^http[s]?:\/\/([^:\/\s]+(:\d*)?)(.*)?')
             match = pattern.match(HOSTNAME)
-            FORCE_SCRIPT_NAME = match.group(3)
-            if FORCE_SCRIPT_NAME:
+            if FORCE_SCRIPT_NAME := match[3]:
                 logger.info("=> Django URL prefix is set to: %s", FORCE_SCRIPT_NAME)
 
 INTERNAL_PORT = '8080'
@@ -404,33 +399,31 @@ MEDIA_URL = '/data/'
 UPLOAD_DIR = 'upload'
 AVATAR_PATH = 'avatars'
 
-SUPPORTED_EXTENSIONS = set(
-    [
-        '.aiff',
-        '.au',
-        '.bmp',
-        '.csv',
-        '.flac',
-        '.gif',
-        '.htm',
-        '.html',
-        '.jpg',
-        '.jpeg',
-        '.json',
-        '.m4a',
-        '.mp3',
-        '.ogg',
-        '.png',
-        '.svg',
-        '.tsv',
-        '.txt',
-        '.wav',
-        '.xml',
-        '.mp4',
-        '.webm',
-        '.webp',
-    ]
-)
+SUPPORTED_EXTENSIONS = {
+    '.aiff',
+    '.au',
+    '.bmp',
+    '.csv',
+    '.flac',
+    '.gif',
+    '.htm',
+    '.html',
+    '.jpg',
+    '.jpeg',
+    '.json',
+    '.m4a',
+    '.mp3',
+    '.ogg',
+    '.png',
+    '.svg',
+    '.tsv',
+    '.txt',
+    '.wav',
+    '.xml',
+    '.mp4',
+    '.webm',
+    '.webp',
+}
 
 # directory for files created during unit tests
 TEST_DATA_ROOT = os.path.join(BASE_DATA_DIR, 'test_data')
@@ -627,7 +620,7 @@ if get_env('STORAGE_TYPE') == "s3":
     AWS_LOCATION = get_env('STORAGE_AWS_FOLDER', default='')
     AWS_S3_USE_SSL = get_bool_env('STORAGE_AWS_S3_USE_SSL', True)
     AWS_S3_VERIFY = get_env('STORAGE_AWS_S3_VERIFY', None)
-    if AWS_S3_VERIFY == 'false' or AWS_S3_VERIFY == 'False' or AWS_S3_VERIFY == '0':
+    if AWS_S3_VERIFY in ['false', 'False', '0']:
         AWS_S3_VERIFY = False
 
 if get_env('STORAGE_TYPE') == "azure":
@@ -649,8 +642,7 @@ if get_env('STORAGE_TYPE') == "gcs":
     GS_LOCATION = get_env('STORAGE_GCS_FOLDER', default='')
     GS_CUSTOM_ENDPOINT = get_env('STORAGE_GCS_ENDPOINT')
 
-CSRF_TRUSTED_ORIGINS = get_env('CSRF_TRUSTED_ORIGINS', [])
-if CSRF_TRUSTED_ORIGINS:
+if CSRF_TRUSTED_ORIGINS := get_env('CSRF_TRUSTED_ORIGINS', []):
     CSRF_TRUSTED_ORIGINS = CSRF_TRUSTED_ORIGINS.split(",")
 
 REAL_HOSTNAME = os.getenv('HOSTNAME')  # we have to use getenv, because we don't use LABEL_STUDIO_ prefix

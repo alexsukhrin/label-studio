@@ -27,7 +27,10 @@ def retrieve_tasks_predictions(project, queryset, **kwargs):
     :param queryset: filtered tasks db queryset
     """
     evaluate_predictions(queryset)
-    return {'processed_items': queryset.count(), 'detail': 'Retrieved ' + str(queryset.count()) + ' predictions'}
+    return {
+        'processed_items': queryset.count(),
+        'detail': f'Retrieved {str(queryset.count())} predictions',
+    }
 
 
 def delete_tasks(project, queryset, **kwargs):
@@ -67,8 +70,11 @@ def delete_tasks(project, queryset, **kwargs):
         project.views.all().delete()
         reload = True
 
-    return {'processed_items': count, 'reload': reload,
-            'detail': 'Deleted ' + str(count) + ' tasks'}
+    return {
+        'processed_items': count,
+        'reload': reload,
+        'detail': f'Deleted {count} tasks',
+    }
 
 
 def delete_tasks_annotations(project, queryset, **kwargs):
@@ -101,8 +107,10 @@ def delete_tasks_annotations(project, queryset, **kwargs):
         tasks = Task.objects.filter(id__in=task_ids)
         postprocess(project, tasks, **kwargs)
 
-    return {'processed_items': count,
-            'detail': 'Deleted ' + str(count) + ' annotations'}
+    return {
+        'processed_items': count,
+        'detail': f'Deleted {str(count)} annotations',
+    }
 
 
 def delete_tasks_predictions(project, queryset, **kwargs):
@@ -117,7 +125,10 @@ def delete_tasks_predictions(project, queryset, **kwargs):
     count = predictions.count()
     predictions.delete()
     project.update_tasks_counters(Task.objects.filter(id__in=real_task_ids))
-    return {'processed_items': count, 'detail': 'Deleted ' + str(count) + ' predictions'}
+    return {
+        'processed_items': count,
+        'detail': f'Deleted {str(count)} predictions',
+    }
 
 
 def async_project_summary_recalculation(tasks_ids_list, project_id):

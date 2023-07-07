@@ -62,8 +62,7 @@ class AzureBlobStorageMixin(models.Model):
         if not account_name or not account_key:
             raise ValueError('Azure account name and key must be set using '
                              'environment variables AZURE_BLOB_ACCOUNT_NAME and AZURE_BLOB_ACCOUNT_KEY')
-        connection_string = "DefaultEndpointsProtocol=https;AccountName=" + account_name + \
-                            ";AccountKey=" + account_key + ";EndpointSuffix=core.windows.net"
+        connection_string = f"DefaultEndpointsProtocol=https;AccountName={account_name};AccountKey={account_key};EndpointSuffix=core.windows.net"
         client = BlobServiceClient.from_connection_string(conn_str=connection_string)
         container = client.get_container_client(str(self.container))
         return client, container
@@ -114,7 +113,7 @@ class AzureBlobImportStorageBase(AzureBlobStorageMixin, ImportStorage):
                 continue
             # check regex pattern filter
             if regex and not regex.match(file.name):
-                logger.debug(file.name + ' is skipped by regex filter')
+                logger.debug(f'{file.name} is skipped by regex filter')
                 continue
 
             yield file.name
@@ -148,7 +147,7 @@ class AzureBlobImportStorageBase(AzureBlobStorageMixin, ImportStorage):
                                       account_key=self.get_account_key(),
                                       permission=BlobSasPermissions(read=True),
                                       expiry=expiry)
-        return 'https://' + self.get_account_name() + '.blob.core.windows.net/' + container + '/' + blob + '?' + sas_token
+        return f'https://{self.get_account_name()}.blob.core.windows.net/{container}/{blob}?{sas_token}'
 
     class Meta:
         abstract = True
@@ -167,7 +166,7 @@ class AzureBlobExportStorage(AzureBlobStorageMixin, ExportStorage):  # note: ord
         ser_annotation = self._get_serialized_data(annotation)
         # get key that identifies this object in storage
         key = AzureBlobExportStorageLink.get_key(annotation)
-        key = str(self.prefix) + '/' + key if self.prefix else key
+        key = f'{str(self.prefix)}/{key}' if self.prefix else key
 
         # put object into storage
         blob = container.get_blob_client(key)

@@ -109,12 +109,11 @@ def test_next_task(
     # make sure any annotation was made by current client
     Annotation.objects.all().update(completed_by=any_client.annotator)
 
-    # collect uncompleted task ids to verify that only them are seen in the next labeling steps
-    uncompleted_task_ids = set()
-    for t in Task.objects.all():
-        if not t.annotations.filter(ground_truth=False).exists():
-            uncompleted_task_ids.add(t.id)
-
+    uncompleted_task_ids = {
+        t.id
+        for t in Task.objects.all()
+        if not t.annotations.filter(ground_truth=False).exists()
+    }
     r = any_client.get(f'/api/projects/{project.id}/next')
     assert r.status_code == status_code
     rdata = json.loads(r.content)
@@ -882,11 +881,8 @@ def test_label_race_with_overlap(configured_project, business_client):
     ann1 = make_annotator({'email': 'ann1@testlabelracewithoverlap.com'}, project, True)
     ann2 = make_annotator({'email': 'ann2@testlabelracewithoverlap.com'}, project, True)
 
-    # create tasks
-    tasks = []
     num_tasks = 2
-    for i in range(num_tasks):
-        tasks.append({'data': {'text': f'this is {str(i)}'}})
+    tasks = [{'data': {'text': f'this is {str(i)}'}} for i in range(num_tasks)]
     r = business_client.post(
         f'/api/projects/{project.id}/tasks/bulk/', data=json.dumps(tasks), content_type='application/json')
     assert r.status_code == 201
@@ -984,11 +980,8 @@ def test_label_w_drafts_race_with_overlap(configured_project, business_client):
     ann1 = make_annotator({'email': 'ann1@testlabelracewdrafts.com'}, project, True)
     ann2 = make_annotator({'email': 'ann2@testlabelracewdrafts.com'}, project, True)
 
-    # create tasks
-    tasks = []
     num_tasks = 2
-    for i in range(num_tasks):
-        tasks.append({'data': {'text': f'this is {str(i)}'}})
+    tasks = [{'data': {'text': f'this is {str(i)}'}} for i in range(num_tasks)]
     r = business_client.post(
         f'/api/projects/{project.id}/tasks/bulk/', data=json.dumps(tasks), content_type='application/json')
     assert r.status_code == 201
@@ -1088,11 +1081,8 @@ def test_fetch_final_taken_task(business_client):
     ann1 = make_annotator({'email': 'ann1@testfetchfinal.com'}, project, True)
     ann2 = make_annotator({'email': 'ann2@testfetchfinal.com'}, project, True)
 
-    # create tasks
-    tasks = []
     num_tasks = 2
-    for i in range(num_tasks):
-        tasks.append({'data': {'text': f'this is {str(i)}'}})
+    tasks = [{'data': {'text': f'this is {str(i)}'}} for i in range(num_tasks)]
     r = business_client.post(
         f'/api/projects/{project.id}/tasks/bulk/', data=json.dumps(tasks), content_type='application/json')
     assert r.status_code == 201
@@ -1120,7 +1110,7 @@ def test_fetch_final_taken_task(business_client):
     assert another_task_id != task_id
 
     print('ann1 should never take task_id since he has completed it')
-    for i in range(3):
+    for _ in range(3):
         r = ann1.get(f'/api/projects/{project.id}/next')
         assert json.loads(r.content)['id'] == another_task_id
 
@@ -1260,7 +1250,14 @@ def test_with_bad_annotation_result(business_client):
                 make_annotation({'result': [bad_result] * 10 + [good_result] * 10, 'completed_by': anns[i].annotator}, task.id)
 
     # create uncompleted task
-    uncompleted_task = make_task({'data': {'image': f'https://data.s3.amazonaws.com/image/uncompleted.jpg'}}, project)
+    uncompleted_task = make_task(
+        {
+            'data': {
+                'image': 'https://data.s3.amazonaws.com/image/uncompleted.jpg'
+            }
+        },
+        project,
+    )
 
     print('ann1 takes any task with bad annotation and complete it')
     r = anns[0].get(f'/api/projects/{project.id}/next')
@@ -1270,7 +1267,11 @@ def test_with_bad_annotation_result(business_client):
     def make_async_annotation_submit(new_ann=None):
         print('Async annotation submit')
         if new_ann is None:
-            new_ann = make_annotator({'email': f'new_ann@testwithbadannotationresult.com'}, project, True)
+            new_ann = make_annotator(
+                {'email': 'new_ann@testwithbadannotationresult.com'},
+                project,
+                True,
+            )
         new_ann.post(
             f'/api/tasks/{task_id}/annotations/',
             data={'task': task_id, 'result': json.dumps([good_result])},

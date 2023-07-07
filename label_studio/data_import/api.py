@@ -182,8 +182,7 @@ class ImportAPI(generics.CreateAPIView):
     queryset = Task.objects.all()
 
     def get_serializer_context(self):
-        project_id = self.kwargs.get('pk')
-        if project_id:
+        if project_id := self.kwargs.get('pk'):
             project = generics.get_object_or_404(Project.objects.for_user(self.request.user), pk=project_id)
         else:
             project = None
@@ -613,10 +612,10 @@ class DownloadStorageData(APIView):
         # Let NGINX handle it
         response = HttpResponse()
         # The below header tells NGINX to catch it and serve, see docker-config/nginx-app.conf
-        redirect = '/file_download/' + protocol + '/' + url.replace(protocol + '://', '')
+        redirect = f'/file_download/{protocol}/' + url.replace(f'{protocol}://', '')
 
         response['X-Accel-Redirect'] = redirect
-        response['Content-Disposition'] = 'attachment; filename="{}"'.format(filepath)
+        response['Content-Disposition'] = f'attachment; filename="{filepath}"'
         return response
 
 

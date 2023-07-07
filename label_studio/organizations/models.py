@@ -62,7 +62,7 @@ class Organization(OrganizationMixin, models.Model):
     updated_at = models.DateTimeField(_('updated at'), auto_now=True)
 
     def __str__(self):
-        return self.title + ', id=' + str(self.pk)
+        return f'{self.title}, id={str(self.pk)}'
 
     @classmethod
     def create_organization(cls, created_by=None, title='Your Organization'):
@@ -91,9 +91,7 @@ class Organization(OrganizationMixin, models.Model):
         return self.projects.filter(members__user=user).exists()
 
     def has_permission(self, user):
-        if self in user.organizations.all():
-            return True
-        return False
+        return self in user.organizations.all()
 
     def add_user(self, user):
         if self.users.filter(pk=user.pk).exists():
@@ -134,8 +132,7 @@ class Organization(OrganizationMixin, models.Model):
         from users.models import User
 
         invited_ids = self.projects.values_list('members__user__pk', flat=True).distinct()
-        per_project_invited_users = User.objects.filter(pk__in=invited_ids)
-        return per_project_invited_users
+        return User.objects.filter(pk__in=invited_ids)
 
     @property
     def secure_mode(self):

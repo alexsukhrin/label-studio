@@ -187,8 +187,9 @@ class TaskListAPI(generics.ListCreateAPIView):
     def get(self, request):
         # get project
         view_pk = int_from_request(request.GET, 'view', 0) or int_from_request(request.data, 'view', 0)
-        project_pk = int_from_request(request.GET, 'project', 0) or int_from_request(request.data, 'project', 0)
-        if project_pk:
+        if project_pk := int_from_request(
+            request.GET, 'project', 0
+        ) or int_from_request(request.data, 'project', 0):
             project = generics.get_object_or_404(Project, pk=project_pk)
             self.check_object_permissions(request, project)
         elif view_pk:
@@ -326,7 +327,7 @@ class ProjectActionsAPI(APIView):
         # wrong action id
         action_id = request.GET.get('id', None)
         if action_id is None:
-            response = {'detail': 'No action id "' + str(action_id) + '", use ?id=<action-id>'}
+            response = {'detail': f'No action id "{str(action_id)}", use ?id=<action-id>'}
             return Response(response, status=422)
 
         # perform action and return the result dict

@@ -14,7 +14,7 @@ def make_queryset_from_iterable(tasks_list):
         # Extract task IDs from Tasks list
         if isinstance(tasks_list[0], Task):
             tasks_list = [task.id for task in tasks_list]
-        queryset = Task.objects.filter(id__in=tasks_list)
+        return Task.objects.filter(id__in=tasks_list)
     else:
         ids = []
         for task in tasks_list:
@@ -24,5 +24,4 @@ def make_queryset_from_iterable(tasks_list):
                 ids.append(task)
             else:
                 raise ValueError(f"Unknown object type: {str(task)}")
-        queryset = Task.objects.filter(id__in=ids)
-    return queryset
+        return Task.objects.filter(id__in=ids)

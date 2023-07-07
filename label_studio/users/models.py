@@ -1,5 +1,6 @@
 """This file and its contents are licensed under the Apache License 2.0. Please see the included NOTICE for copyright information and LICENSE for a copy of the license.
 """
+
 import datetime
 
 from django.utils import timezone
@@ -18,10 +19,9 @@ from core.utils.common import load_func
 from projects.models import Project
 
 YEAR_START = 1980
-YEAR_CHOICES = []
-for r in range(YEAR_START, (datetime.datetime.now().year+1)):
-    YEAR_CHOICES.append((r, r))
-
+YEAR_CHOICES = [
+    (r, r) for r in range(YEAR_START, (datetime.datetime.now().year + 1))
+]
 year = models.IntegerField(_('year'), choices=YEAR_CHOICES, default=datetime.datetime.now().year)
 
 
@@ -174,7 +174,7 @@ class User(UserMixin, AbstractBaseUser, PermissionsMixin, UserLastActivityMixin)
         """
         Return the first_name and the last_name for a given user with a space in between.
         """
-        full_name = '%s %s' % (self.first_name, self.last_name)
+        full_name = f'{self.first_name} {self.last_name}'
         return full_name.strip()
 
     def get_short_name(self):
@@ -190,14 +190,13 @@ class User(UserMixin, AbstractBaseUser, PermissionsMixin, UserLastActivityMixin)
     def get_initials(self):
         initials = '?'
         if not self.first_name and not self.last_name:
-            initials = self.email[0:2]
+            return self.email[:2]
         elif self.first_name and not self.last_name:
-            initials = self.first_name[0:1]
-        elif self.last_name and not self.first_name:
-            initials = self.last_name[0:1]
-        elif self.first_name and self.last_name:
-            initials = self.first_name[0:1] + self.last_name[0:1]
-        return initials
+            return self.first_name[:1]
+        elif not self.first_name:
+            return self.last_name[:1]
+        else:
+            return self.first_name[:1] + self.last_name[:1]
 
 
 @receiver(post_save, sender=User)

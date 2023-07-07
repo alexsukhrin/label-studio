@@ -61,18 +61,16 @@ class BaseHTTPAPI(object):
         key = self._session_key()
         if key in self._sessions:
             return self._sessions[key]
-        else:
-            session = self.create_session()
-            self._sessions[key] = session
-            return session
+        session = self.create_session()
+        self._sessions[key] = session
+        return session
 
     def _prepare_kwargs(self, kwargs):
         # add timeout if it's not presented
         if 'timeout' not in kwargs:
             kwargs['timeout'] = self._connection_timeout, self._timeout
 
-        # add connection timeout if it's not presented
-        elif isinstance(kwargs['timeout'], float) or isinstance(kwargs['timeout'], int):
+        elif isinstance(kwargs['timeout'], (float, int)):
             kwargs['timeout'] = (self._connection_timeout, kwargs['timeout'])
 
     def request(self, method, *args, **kwargs):
@@ -145,7 +143,7 @@ class MLApi(BaseHTTPAPI):
         except requests.exceptions.RequestException as e:
             # Extending error details in case of failed request
             if flag_set('fix_back_dev_3351_ml_validation_error_extension_short', AnonymousUser):
-                error_string = str(e) + (" " + str(response.text) if response else "")
+                error_string = str(e) + (f" {str(response.text)}" if response else "")
             else:
                 error_string = str(e)
             status_code = response.status_code if response is not None else 0
@@ -215,13 +213,19 @@ class MLApi(BaseHTTPAPI):
         return self._request('validate', request={'config': config}, timeout=self._validate_request_timeout)
 
     def setup(self, project, model_version=None):
-        return self._request('setup', request={
-            'project': self._create_project_uid(project),
-            'schema': project.label_config,
-            'hostname': settings.HOSTNAME if settings.HOSTNAME else ('http://localhost:' + settings.INTERNAL_PORT),
-            'access_token': project.created_by.auth_token.key,
-            'model_version': model_version
-        }, timeout=TIMEOUT_SETUP)
+        return self._request(
+            'setup',
+            request={
+                'project': self._create_project_uid(project),
+                'schema': project.label_config,
+                'hostname': settings.HOSTNAME
+                if settings.HOSTNAME
+                else f'http://localhost:{settings.INTERNAL_PORT}',
+                'access_token': project.created_by.auth_token.key,
+                'model_version': model_version,
+            },
+            timeout=TIMEOUT_SETUP,
+        )
 
     def duplicate_model(self, project_src, project_dst):
         return self._request('duplicate_model', request={

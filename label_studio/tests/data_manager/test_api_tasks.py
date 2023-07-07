@@ -113,7 +113,7 @@ def test_views_total_counters(tasks_count, annotations_count, predictions_count,
     project = Project.objects.get(pk=project_id)
     for _ in range(0, tasks_count):
         task_id = make_task({"data": {}}, project).id
-        print('TASK_ID: %s' % task_id)
+        print(f'TASK_ID: {task_id}')
         for _ in range(0, annotations_count):
             make_annotation({"result": []}, task_id)
 

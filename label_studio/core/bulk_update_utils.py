@@ -49,10 +49,10 @@ def grouper(iterable, size):
     # http://stackoverflow.com/a/8991553
     it = iter(iterable)
     while True:
-        chunk = tuple(itertools.islice(it, size))
-        if not chunk:
+        if chunk := tuple(itertools.islice(it, size)):
+            yield chunk
+        else:
             return
-        yield chunk
 
 
 def validate_fields(meta, fields):
@@ -67,12 +67,9 @@ def validate_fields(meta, fields):
             if field.name != field.attname:
                 field_names.add(field.attname)
 
-    non_model_fields = fields.difference(field_names)
-
-    if non_model_fields:
+    if non_model_fields := fields.difference(field_names):
         raise TypeError(
-            "These fields are not present in "
-            "current meta: {}".format(', '.join(non_model_fields))
+            f"These fields are not present in current meta: {', '.join(non_model_fields)}"
         )
 
 
@@ -93,23 +90,21 @@ def get_fields(update_fields, exclude_fields, meta, obj=None):
 
     exclude_fields |= deferred_fields
 
-    fields = [
+    return [
         field
         for field in meta.concrete_fields
         if (
-            not field.primary_key and
-            field.attname not in deferred_fields and
-            field.attname not in exclude_fields and
-            field.name not in exclude_fields and
-            (
-                update_fields is None or
-                field.attname in update_fields or
-                field.name in update_fields
+            not field.primary_key
+            and field.attname not in deferred_fields
+            and field.attname not in exclude_fields
+            and field.name not in exclude_fields
+            and (
+                update_fields is None
+                or field.attname in update_fields
+                or field.name in update_fields
             )
         )
     ]
-
-    return fields
 
 
 def bulk_update(objs, meta=None, update_fields=None, exclude_fields=None,
@@ -171,10 +166,12 @@ def bulk_update(objs, meta=None, update_fields=None, exclude_fields=None,
             template.format(
                 column=field.column,
                 pk_column=pk_field.column,
-                cases=(case_template*len(placeholders[field])).format(*placeholders[field]),
+                cases=(case_template * len(placeholders[field])).format(
+                    *placeholders[field]
+                ),
                 type=_get_db_type(field, connection=connection),
             )
-            for field in parameters.keys()
+            for field in parameters
         )
 
         parameters = flatten(parameters.values(), types=list)
@@ -183,7 +180,7 @@ def bulk_update(objs, meta=None, update_fields=None, exclude_fields=None,
         n_pks = len(pks)
         del pks
 
-        dbtable = '"{}"'.format(meta.db_table)
+        dbtable = f'"{meta.db_table}"'
 
         in_clause = '"{pk_column}" in ({pks})'.format(
             pk_column=pk_field.column,

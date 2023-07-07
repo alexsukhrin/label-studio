@@ -118,8 +118,9 @@ class Task(TaskMixin, models.Model):
         if project is not None:
             lock = TaskLock.objects.filter(user=user, expire_at__gt=now(), task__project=project).first()
         elif tasks is not None:
-            locked_tasks = tasks.filter(locks__user=user, locks__expire_at__gt=now())[:1]
-            if locked_tasks:
+            if locked_tasks := tasks.filter(
+                locks__user=user, locks__expire_at__gt=now()
+            )[:1]:
                 return locked_tasks[0]
         else:
             raise Exception('Neither project or tasks passed to get_locked_by')
@@ -158,7 +159,7 @@ class Task(TaskMixin, models.Model):
                     num_annotations=num_annotations,
                 )
             )
-        result = bool(num >= self.overlap)
+        result = num >= self.overlap
         logger.log(
             get_next_task_logging_level(user),
             f'Task {self} locked: {result}; num_locks: {num_locks} num_annotations: {num_annotations} '
@@ -226,7 +227,7 @@ class Task(TaskMixin, models.Model):
     def is_upload_file(filename):
         if not isinstance(filename, str):
             return False
-        return filename.startswith(settings.UPLOAD_DIR + '/')
+        return filename.startswith(f'{settings.UPLOAD_DIR}/')
 
     @staticmethod
     def prepare_filename(filename):
@@ -264,24 +265,17 @@ class Task(TaskMixin, models.Model):
                     # permission check: resolve uploaded files to the project only
                     file_upload = None
                     file_upload = FileUpload.objects.filter(project=project, file=prepared_filename).first()
-                    if file_upload is not None:
-                        if flag_set('ff_back_dev_2915_storage_nginx_proxy_26092022_short', self.project.organization.created_by):
-                            task_data[field] = file_upload.url
-                        else:
-                            task_data[field] = default_storage.url(name=prepared_filename)
-                    # it's very rare case, e.g. user tried to reimport exported file from another project
-                    # or user wrote his django storage path manually
+                    if file_upload is None:
+                        task_data[field] = f'{task_data[field]}?not_uploaded_project_file'
+                    elif flag_set('ff_back_dev_2915_storage_nginx_proxy_26092022_short', self.project.organization.created_by):
+                        task_data[field] = file_upload.url
                     else:
-                        task_data[field] = task_data[field] + '?not_uploaded_project_file'
+                        task_data[field] = default_storage.url(name=prepared_filename)
                     continue
 
-                # project storage
-                # TODO: to resolve nested lists and dicts we should improve _get_storage_by_url(),
-                # TODO: problem with current approach: it can be used only the first storage that _get_storage_by_url
-                # TODO: returns. However, maybe the second storage will resolve uris properly. 
-                # TODO: resolve_uri() already supports them
-                storage = self.storage or self._get_storage_by_url(task_data[field], storage_objects)
-                if storage:
+                if storage := self.storage or self._get_storage_by_url(
+                    task_data[field], storage_objects
+                ):
                     try:
                         proxy_task = None
                         if flag_set('fflag_fix_all_lsdv_4711_cors_errors_accessing_task_data_short', user='auto'):
@@ -307,7 +301,7 @@ class Task(TaskMixin, models.Model):
 
         # url is list or dict
         if flag_set('fflag_feat_front_lsdv_4661_full_uri_resolve_15032023_short', user='auto'):
-            if isinstance(url, dict) or isinstance(url, list):
+            if isinstance(url, (dict, list)):
                 for storage_object in storage_objects:
                     if storage_object.can_resolve_url(url):
                         # note: only first found storage_object will be used for link resoling
@@ -317,12 +311,9 @@ class Task(TaskMixin, models.Model):
 
     @property
     def storage(self):
-        # maybe task has storage link
-        storage_link = self.get_storage_link()
-        if storage_link:
+        if storage_link := self.get_storage_link():
             return storage_link.storage
 
-        # or try global storage settings (only s3 for now)
         elif get_env('USE_DEFAULT_S3_STORAGE', default=False, is_bool=True):
             # TODO: this is used to access global environment storage settings.
             # We may use more than one and non-default S3 storage (like GCS, Azure)
@@ -353,11 +344,14 @@ class Task(TaskMixin, models.Model):
     def save(self, *args, **kwargs):
         if flag_set('ff_back_2070_inner_id_12052022_short', AnonymousUser):
             if self.inner_id == 0:
-                task = Task.objects.filter(project=self.project).order_by("-inner_id").first()
-                max_inner_id = 1
-                if task:
+                if (
+                    task := Task.objects.filter(project=self.project)
+                    .order_by("-inner_id")
+                    .first()
+                ):
                     max_inner_id = task.inner_id
-
+                else:
+                    max_inner_id = 1
                 # max_inner_id might be None in the old projects
                 self.inner_id = None if max_inner_id is None else (max_inner_id + 1)
         super().save(*args, **kwargs)
@@ -505,17 +499,14 @@ class Annotation(models.Model):
     def update_task(self):
         update_fields = ['updated_at']
 
-        # updated_by
-        request = get_current_request()
-        if request:
+        if request := get_current_request():
             self.task.updated_by = request.user
             update_fields.append('updated_by')
 
         self.task.save(update_fields=update_fields)
 
     def save(self, *args, **kwargs):
-        request = get_current_request()
-        if request:
+        if request := get_current_request():
             self.updated_by = request.user
         result = super().save(*args, **kwargs)
         self.update_task()
@@ -641,7 +632,7 @@ class Prediction(models.Model):
             # full representation of result
             for item in result:
                 if not isinstance(item, dict):
-                    raise ValidationError(f'Each item in prediction result should be dict')
+                    raise ValidationError('Each item in prediction result should be dict')
             # TODO: check consistency with project.label_config
             return result
 
@@ -677,9 +668,7 @@ class Prediction(models.Model):
     def update_task(self):
         update_fields = ['updated_at']
 
-        # updated_by
-        request = get_current_request()
-        if request:
+        if request := get_current_request():
             self.task.updated_by = request.user
             update_fields.append('updated_by')
 
@@ -715,7 +704,9 @@ def update_all_task_states_after_deleting_task(sender, instance, **kwargs):
             tasks_number_changed=True
         )
     except Exception as exc:
-        logger.error('Error in update_all_task_states_after_deleting_task: ' + str(exc))
+        logger.error(
+            f'Error in update_all_task_states_after_deleting_task: {str(exc)}'
+        )
 
 
 # =========== PROJECT SUMMARY UPDATES ===========
@@ -765,9 +756,9 @@ def delete_project_summary_annotations_before_updating_annotation(sender, instan
         return
     old_annotation.decrease_project_summary_counters()
 
-    # update task counters if annotation changes it's was_cancelled status
-    task = instance.task
     if old_annotation.was_cancelled != instance.was_cancelled:
+        # update task counters if annotation changes it's was_cancelled status
+        task = instance.task
         if instance.was_cancelled:
             task.cancelled_annotations = task.cancelled_annotations + 1
             task.total_annotations = task.total_annotations - 1
@@ -877,10 +868,8 @@ def bulk_update_stats_project_tasks(tasks, project=None):
     if project is None:
         project = tasks[0].project
     with transaction.atomic():
-        use_overlap = project._can_use_overlap()
-        maximum_annotations = project.maximum_annotations
-        # update filters if we can use overlap
-        if use_overlap:
+        if use_overlap := project._can_use_overlap():
+            maximum_annotations = project.maximum_annotations
             # finished tasks
             finished_tasks = tasks.filter(Q(total_annotations__gte=maximum_annotations) |
                                           Q(total_annotations__gte=1, overlap=1))

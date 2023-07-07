@@ -357,7 +357,9 @@ def setup_project(client, project_template, do_auth=True):
             m.register_uri('GET', re.compile(r'ml\.heartex\.net/\d+/health'), text=json.dumps({'status': 'UP'}))
             r = client.post(urls.project_create, data=project_config)
             print('Project create with status code:', r.status_code)
-            assert r.status_code == 201, f'Create project result should be redirect to the next page'
+            assert (
+                r.status_code == 201
+            ), 'Create project result should be redirect to the next page'
 
         # get project id and prepare url
         project = Project.objects.filter(title=project_config['title']).first()

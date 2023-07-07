@@ -22,10 +22,9 @@ def get_client_and_resource(
     aws_access_key_id = aws_access_key_id or get_env('AWS_ACCESS_KEY_ID')
     aws_secret_access_key = aws_secret_access_key or get_env('AWS_SECRET_ACCESS_KEY')
     aws_session_token = aws_session_token or get_env('AWS_SESSION_TOKEN')
-    logger.debug(f'Create boto3 session with '
-                 f'access key id={aws_access_key_id}, '
-                 f'secret key={aws_secret_access_key[:4] + "..." if aws_secret_access_key else None}, '
-                 f'session token={aws_session_token}')
+    logger.debug(
+        f'Create boto3 session with access key id={aws_access_key_id}, secret key={f"{aws_secret_access_key[:4]}..." if aws_secret_access_key else None}, session token={aws_session_token}'
+    )
     session = boto3.Session(
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
@@ -34,8 +33,7 @@ def get_client_and_resource(
     settings = {
         'region_name': region_name or get_env('S3_region') or 'us-east-1'
     }
-    s3_endpoint = s3_endpoint or get_env('S3_ENDPOINT')
-    if s3_endpoint:
+    if s3_endpoint := s3_endpoint or get_env('S3_ENDPOINT'):
         settings['endpoint_url'] = s3_endpoint
     client = session.client('s3', config=boto3.session.Config(signature_version='s3v4'), **settings)
     resource = session.resource('s3', config=boto3.session.Config(signature_version='s3v4'), **settings)
@@ -51,9 +49,9 @@ def resolve_s3_url(url, client, presign=True, expires_in=3600):
     if not presign:
         object = client.get_object(Bucket=bucket_name, Key=key)
         content_type = object['ResponseMetadata']['HTTPHeaders']['content-type']
-        object_b64 = "data:" + content_type + ";base64," + base64.b64encode(object['Body'].read()).decode('utf-8')
-        return object_b64
-
+        return f"data:{content_type};base64," + base64.b64encode(
+            object['Body'].read()
+        ).decode('utf-8')
     # Otherwise try to generate presigned url
     try:
         presigned_url = client.generate_presigned_url(

@@ -22,7 +22,15 @@ def upload_name_generator(instance, filename):
     project = str(instance.project_id)
     project_dir = os.path.join(settings.MEDIA_ROOT, settings.UPLOAD_DIR, project)
     os.makedirs(project_dir, exist_ok=True)
-    path = settings.UPLOAD_DIR + '/' + project + '/' + str(uuid.uuid4())[0:8] + '-' + filename
+    path = (
+        settings.UPLOAD_DIR
+        + '/'
+        + project
+        + '/'
+        + str(uuid.uuid4())[:8]
+        + '-'
+        + filename
+    )
     return path
 
 
@@ -60,7 +68,7 @@ class FileUpload(models.Model):
         except:
             pass
         finally:
-            logger.debug('Get file format ' + str(file_format))
+            logger.debug(f'Get file format {str(file_format)}')
         return file_format
 
     @property
@@ -74,7 +82,7 @@ class FileUpload(models.Model):
         return body
 
     def read_tasks_list_from_csv(self, sep=','):
-        logger.debug('Read tasks list from CSV file {}'.format(self.file.name))
+        logger.debug(f'Read tasks list from CSV file {self.file.name}')
         tasks = pd.read_csv(self.file.open(), sep=sep).fillna('').to_dict('records')
         tasks = [{'data': task} for task in tasks]
         return tasks
@@ -83,13 +91,12 @@ class FileUpload(models.Model):
         return self.read_tasks_list_from_csv('\t')
 
     def read_tasks_list_from_txt(self):
-        logger.debug('Read tasks list from text file {}'.format(self.file.name))
+        logger.debug(f'Read tasks list from text file {self.file.name}')
         lines = self.content.splitlines()
-        tasks = [{'data': {settings.DATA_UNDEFINED_NAME: line}} for line in lines]
-        return tasks
+        return [{'data': {settings.DATA_UNDEFINED_NAME: line}} for line in lines]
 
     def read_tasks_list_from_json(self):
-        logger.debug('Read tasks list from JSON file {}'.format(self.file.name))
+        logger.debug(f'Read tasks list from JSON file {self.file.name}')
 
         raw_data = self.content
         # Python 3.5 compatibility fix https://docs.python.org/3/whatsnew/3.6.html#json
@@ -109,18 +116,17 @@ class FileUpload(models.Model):
         return tasks_formatted
 
     def read_task_from_hypertext_body(self):
-        logger.debug('Read 1 task from hypertext file {}'.format(self.file.name))
+        logger.debug(f'Read 1 task from hypertext file {self.file.name}')
         body = self.content
-        tasks = [{'data': {settings.DATA_UNDEFINED_NAME: body}}]
-        return tasks
+        return [{'data': {settings.DATA_UNDEFINED_NAME: body}}]
 
     def read_task_from_uploaded_file(self):
-        logger.debug('Read 1 task from uploaded file {}'.format(self.file.name))
-        if settings.CLOUD_FILE_STORAGE_ENABLED:
-            tasks = [{'data': {settings.DATA_UNDEFINED_NAME: self.file.name}}]
-        else:
-            tasks = [{'data': {settings.DATA_UNDEFINED_NAME: self.url}}]
-        return tasks
+        logger.debug(f'Read 1 task from uploaded file {self.file.name}')
+        return (
+            [{'data': {settings.DATA_UNDEFINED_NAME: self.file.name}}]
+            if settings.CLOUD_FILE_STORAGE_ENABLED
+            else [{'data': {settings.DATA_UNDEFINED_NAME: self.url}}]
+        )
 
     @property
     def format_could_be_tasks_list(self):

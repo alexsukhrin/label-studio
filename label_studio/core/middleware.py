@@ -63,7 +63,7 @@ class CommonMiddlewareAppendSlashWithoutRedirect(CommonMiddleware):
 
         # prevent recursive includes
         old = settings.MIDDLEWARE
-        name = self.__module__ + '.' + self.__class__.__name__
+        name = f'{self.__module__}.{self.__class__.__name__}'
         settings.MIDDLEWARE = [i for i in settings.MIDDLEWARE if i != name]
 
         self.handler.load_middleware()
@@ -89,8 +89,8 @@ class CommonMiddlewareAppendSlashWithoutRedirect(CommonMiddleware):
             if not request.path.endswith('/'):
                 # remove prefix SCRIPT_NAME
                 path = request.path[len(settings.FORCE_SCRIPT_NAME):] if settings.FORCE_SCRIPT_NAME \
-                    else request.path
-                request.path = path + '/'
+                        else request.path
+                request.path = f'{path}/'
             # we don't need query string in path_info because it's in request.GET already
             request.path_info = request.path
             response = self.handler.get_response(request)

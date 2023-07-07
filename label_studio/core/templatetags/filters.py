@@ -57,9 +57,7 @@ def escape_lt_gt(s):
 
 @register.filter
 def datetime2str(d):
-    if isinstance(d, str):
-        return d
-    return d.strftime('%Y-%m-%d %H:%M:%S')
+    return d if isinstance(d, str) else d.strftime('%Y-%m-%d %H:%M:%S')
 
 
 @register.filter
@@ -69,7 +67,7 @@ def start_zero_padding(number):
 
 @register.filter
 def collaborator_id_in_url(id_, url):
-    return ('collaborator_id=' + str(id_)) in url
+    return f'collaborator_id={str(id_)}' in url
 
 
 @register.filter
@@ -100,18 +98,16 @@ def multiply(value, arg):
 
 @register.simple_tag
 def custom_autocomplete(key=''):
-    if settings.LICENSE.get('disable_autocomplete', False):
-        if key == 'password':
-            return format_html('autocomplete="new-password"')
-        return format_html('autocomplete="off"')
-    else:
+    if not settings.LICENSE.get('disable_autocomplete', False):
         return ''
+    if key == 'password':
+        return format_html('autocomplete="new-password"')
+    return format_html('autocomplete="off"')
 
 
 @register.simple_tag(takes_context=True)
 def var_exists(context, name):
-    dicts = context.dicts  # array of dicts
-    if dicts:
+    if dicts := context.dicts:
         for d in dicts:
             if name in d:
                 return True

@@ -92,13 +92,14 @@ def test_export(
         task_with_annotation = next((t for t in exports if t['id'] == task.id))
         assert task_with_annotation['data'] == task.data
     else:
-        raise Exception('Incorrect return_task param in test: ' + str(return_task))
+        raise Exception(f'Incorrect return_task param in test: {str(return_task)}')
 
     # test how aggregation affects annotations
     if aggregator_type == 'no_aggregation':
-        exported_annotations = set()
-        for annotation in task_with_annotation['annotations']:
-            exported_annotations.add(json.dumps(annotation))
+        exported_annotations = {
+            json.dumps(annotation)
+            for annotation in task_with_annotation['annotations']
+        }
         assert exported_annotations == expected_annotations_for_task
         if finished != '1':
             # we expect to see all tasks in exports...

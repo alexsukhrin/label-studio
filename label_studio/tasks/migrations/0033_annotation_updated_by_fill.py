@@ -34,8 +34,8 @@ def _fill_annotations_updated_by():
 def forward(apps, _):
     annotations = Annotation.objects.all()
 
-    if settings.VERSION_EDITION == 'Community':
-        if annotations.count() > 100000:
+    if annotations.count() > 100000:
+        if settings.VERSION_EDITION == 'Community':
             command = 'label-studio annotations_fill_updated_by'
             logger = logging.getLogger(__name__)
             logger.error(

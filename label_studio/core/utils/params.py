@@ -75,10 +75,8 @@ def float_from_request(params, key, default):
             return float(value)
         except ValueError:
             raise ValidationError({key: f'Incorrect value in key "{key}" = "{value}". It should be digit string.'})
-    # float
-    elif isinstance(value, float) or isinstance(value, int):
+    elif isinstance(value, (float, int)):
         return float(value)
-    # other
     else:
         raise ValidationError({key: f'Incorrect value type in key "{key}" = "{value}". '
                                     f'It should be digit string or float.'})
@@ -95,26 +93,21 @@ def list_of_strings_from_request(params, key, default):
     value = params.get(key, default)
     if value is None:
         return
-    splitters = (',', ';', '|')
-    # str
-    if isinstance(value, str):
-        for splitter in splitters:
-            if splitter in value:
-                return value.split(splitter)
-        return [value]
-    else:
+    if not isinstance(value, str):
         raise ValidationError({key: f'Incorrect value type in key "{key}" = "{value}". '
                                     f'It should be digit string or float.'})
+    splitters = (',', ';', '|')
+    return next(
+        (value.split(splitter) for splitter in splitters if splitter in value),
+        [value],
+    )
 
 
 def get_env(name, default=None, is_bool=False):
-    for env_key in ['LABEL_STUDIO_' + name, 'HEARTEX_' + name, name]:
+    for env_key in [f'LABEL_STUDIO_{name}', f'HEARTEX_{name}', name]:
         value = os.environ.get(env_key)
         if value is not None:
-            if is_bool:
-                return bool_from_request(os.environ, env_key, default)
-            else:
-                return value
+            return bool_from_request(os.environ, env_key, default) if is_bool else value
     return default
 
 
@@ -126,21 +119,17 @@ def get_env_list_int(key, default=None):
     """
     "1,2,3" in env variable => [1, 2, 3] in python
     """
-    value = get_env(key)
-    if not value:
-        if default is None:
-            return []
-        return default
-    return [int(el) for el in value.split(',')]
+    if value := get_env(key):
+        return [int(el) for el in value.split(',')]
+    else:
+        return [] if default is None else default
 
 
 def get_all_env_with_prefix(prefix=None, is_bool=True, default_value=None):
-    out = {}
-    for key in os.environ.keys():
-        if not key.startswith(prefix):
-            continue
-        if is_bool:
-            out[key] = bool_from_request(os.environ, key, default_value)
-        else:
-            out[key] = os.environ[key]
-    return out
+    return {
+        key: bool_from_request(os.environ, key, default_value)
+        if is_bool
+        else os.environ[key]
+        for key in os.environ
+        if key.startswith(prefix)
+    }

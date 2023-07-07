@@ -40,7 +40,7 @@ class S3ImportStorageSerializer(ImportStorageSerializer):
         except ParamValidationError:
             raise ValidationError('Wrong credentials for S3 {bucket_name}'.format(bucket_name=storage.bucket))
         except ClientError as e:
-            if '403' == e.response.get('Error').get('Code'):
+            if e.response.get('Error').get('Code') == '403':
                 raise ValidationError('Cannot connect to S3 {bucket_name} with specified AWS credentials'.format(
                     bucket_name=storage.bucket))
             if '404' in e.response.get('Error').get('Code'):

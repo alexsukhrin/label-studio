@@ -1,5 +1,6 @@
 """This file and its contents are licensed under the Apache License 2.0. Please see the included NOTICE for copyright information and LICENSE for a copy of the license.
 """
+
 from __future__ import unicode_literals
 
 import os
@@ -50,7 +51,7 @@ from boxing import boxing
 try:
     from sentry_sdk import capture_exception, set_tag
     sentry_sdk_loaded = True
-except (ModuleNotFoundError, ImportError):
+except ImportError:
     sentry_sdk_loaded = False
 
 from core import version
@@ -78,7 +79,7 @@ def custom_exception_handler(exc, context):
     :return: response with error desc
     """
     exception_id = uuid.uuid4()
-    logger.error('{} {}'.format(exception_id, exc), exc_info=True)
+    logger.error(f'{exception_id} {exc}', exc_info=True)
 
     exc = _override_exceptions(exc)
 
@@ -97,14 +98,10 @@ def custom_exception_handler(exc, context):
 
         if 'detail' in response.data and isinstance(response.data['detail'], ErrorDetail):
             response_data['detail'] = response.data['detail']
-            response.data = response_data
-        # move validation errors to separate namespace
         else:
             response_data['detail'] = 'Validation error'
             response_data['validation_errors'] = response.data if isinstance(response.data, dict) else {'non_field_errors': response.data}
-            response.data = response_data
-
-    # non-standard exception
+        response.data = response_data
     else:
         if sentry_sdk_loaded:
             # pass exception to sentry
@@ -129,7 +126,7 @@ def create_hash():
     """This function generate 40 character long hash"""
     h = hashlib.sha512()
     h.update(str(time.time()).encode('utf-8'))
-    return h.hexdigest()[0:16]
+    return h.hexdigest()[:16]
 
 def paginator(objects, request, default_page=1, default_size=50):
     """ DEPRECATED
@@ -199,9 +196,17 @@ def find_editor_files():
 
     # find editor files to include in html
     editor_js_dir = os.path.join(editor_dir, 'js')
-    editor_js = [prefix + 'js/' + f for f in os.listdir(editor_js_dir) if f.endswith('.js')]
+    editor_js = [
+        f'{prefix}js/{f}'
+        for f in os.listdir(editor_js_dir)
+        if f.endswith('.js')
+    ]
     editor_css_dir = os.path.join(editor_dir, 'css')
-    editor_css = [prefix + 'css/' + f for f in os.listdir(editor_css_dir) if f.endswith('.css')]
+    editor_css = [
+        f'{prefix}css/{f}'
+        for f in os.listdir(editor_css_dir)
+        if f.endswith('.css')
+    ]
     return {'editor_js': editor_js, 'editor_css': editor_css}
 
 
@@ -215,9 +220,7 @@ def string_is_url(url):
 
 
 def safe_float(v, default=0):
-    if v != v:
-        return default
-    return v
+    return default if v != v else v
 
 
 def sample_query(q, sample_size):
@@ -235,12 +238,11 @@ def get_client_ip(request):
     :param request: django request
     :return: str with ip
     """
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-    if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0]
-    else:
-        ip = request.META.get('REMOTE_ADDR')
-    return ip
+    return (
+        x_forwarded_for.split(',')[0]
+        if (x_forwarded_for := request.META.get('HTTP_X_FORWARDED_FOR'))
+        else request.META.get('REMOTE_ADDR')
+    )
 
 
 def get_attr_or_item(obj, key):
@@ -286,7 +288,7 @@ def start_browser(ls_url, no_browser):
 
     browser_url = ls_url
     threading.Timer(2.5, lambda: webbrowser.open(browser_url)).start()
-    logger.info('Start browser at URL: ' + browser_url)
+    logger.info(f'Start browser at URL: {browser_url}')
 
 
 @contextlib.contextmanager
@@ -334,7 +336,7 @@ def get_app_version():
 def get_latest_version():
     """ Get version from pypi
     """
-    pypi_url = 'https://pypi.org/pypi/%s/json' % label_studio.package_name
+    pypi_url = f'https://pypi.org/pypi/{label_studio.package_name}/json'
     try:
         response = requests.get(pypi_url, timeout=10).text
         data = json.loads(response)
@@ -374,7 +376,7 @@ def check_for_the_latest_version(print_message):
     outdated = latest_version and current_version_is_outdated(latest_version)
 
     def update_package_message():
-        update_command = Fore.CYAN + 'pip install -U ' + label_studio.package_name + Fore.RESET
+        update_command = f'{Fore.CYAN}pip install -U {label_studio.package_name}{Fore.RESET}'
         return boxing(
             'Update available {curr_version} → {latest_version}\nRun {command}'.format(
                 curr_version=label_studio.__version__,
@@ -442,34 +444,28 @@ def collect_versions(force=False):
         pass
 
     # converter
-    try:
+    with contextlib.suppress(Exception):
         import label_studio_converter
         result['label-studio-converter'] = {'version': label_studio_converter.__version__}
-    except Exception as e:
-        pass
-
     # ml
-    try:
+    with contextlib.suppress(Exception):
         import label_studio_ml
         result['label-studio-ml'] = {'version': label_studio_ml.__version__}
-    except Exception as e:
-        pass
+    result |= settings.COLLECT_VERSIONS(result=result)
 
-    result.update(settings.COLLECT_VERSIONS(result=result))
-
-    for key in result:
-        if 'message' in result[key] and len(result[key]['message']) > 70:
-            result[key]['message'] = result[key]['message'][0:70] + ' ...'
+    for key, value in result.items():
+        if 'message' in value and len(result[key]['message']) > 70:
+            result[key]['message'] = result[key]['message'][:70] + ' ...'
 
     if settings.SENTRY_DSN:
         import sentry_sdk
         sentry_sdk.set_context("versions", copy.deepcopy(result))
 
-        for package in result:
-            if 'version' in result[package]:
-                sentry_sdk.set_tag('version-' + package, result[package]['version'])
+        for package, value_ in result.items():
+            if 'version' in value_:
+                sentry_sdk.set_tag(f'version-{package}', result[package]['version'])
             if 'commit' in result[package]:
-                sentry_sdk.set_tag('commit-' + package, result[package]['commit'])
+                sentry_sdk.set_tag(f'commit-{package}', result[package]['commit'])
 
     settings.VERSIONS = result
     return result
@@ -481,8 +477,7 @@ def get_organization_from_request(request):
     user = request.user
     if user and user.is_authenticated:
         if user.active_organization is None:
-            organization_pk = request.session.get('organization_pk')
-            if organization_pk:
+            if organization_pk := request.session.get('organization_pk'):
                 user.active_organization_id = organization_pk
                 user.save()
                 request.session.pop('organization_pk', None)
@@ -593,9 +588,7 @@ def round_floats(o):
         return round(o, 2)
     if isinstance(o, dict):
         return {k: round_floats(v) for k, v in o.items()}
-    if isinstance(o, (list, tuple)):
-        return [round_floats(x) for x in o]
-    return o
+    return [round_floats(x) for x in o] if isinstance(o, (list, tuple)) else o
 
 
 class temporary_disconnect_list_signal:
@@ -641,7 +634,7 @@ def trigram_migration_operations(next_step):
         next_step,
     ]
     SKIP_TRIGRAM_EXTENSION = get_env('SKIP_TRIGRAM_EXTENSION', None)
-    if SKIP_TRIGRAM_EXTENSION == '1' or SKIP_TRIGRAM_EXTENSION == 'yes' or SKIP_TRIGRAM_EXTENSION == 'true':
+    if SKIP_TRIGRAM_EXTENSION in ['1', 'yes', 'true']:
         ops = [
             next_step
         ]
@@ -657,7 +650,7 @@ def btree_gin_migration_operations(next_step):
         next_step,
     ]
     SKIP_BTREE_GIN_EXTENSION = get_env('SKIP_BTREE_GIN_EXTENSION', None)
-    if SKIP_BTREE_GIN_EXTENSION == '1' or SKIP_BTREE_GIN_EXTENSION == 'yes' or SKIP_BTREE_GIN_EXTENSION == 'true':
+    if SKIP_BTREE_GIN_EXTENSION in ['1', 'yes', 'true']:
         ops = [
             next_step
         ]
@@ -691,7 +684,7 @@ def merge_labels_counters(dict1, dict2):
         # add the corresponding values if they exist in both dictionaries
         value = {}
         if key in dict1:
-            value.update(dict1[key])
+            value |= dict1[key]
         if key in dict2:
             for subkey in dict2[key]:
                 value[subkey] = value.get(subkey, 0) + dict2[key][subkey]

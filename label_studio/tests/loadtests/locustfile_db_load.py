@@ -11,7 +11,7 @@ from locust import HttpUser, TaskSet, task, between
 def randomString(stringLength):
     """Generate a random string of fixed length """
     letters = string.ascii_lowercase
-    return ''.join(random.choice(letters) for i in range(stringLength))
+    return ''.join(random.choice(letters) for _ in range(stringLength))
 
 
 class UserWorksWithProject(TaskSet):
@@ -42,7 +42,7 @@ class UserWorksWithProject(TaskSet):
 
         # let this user import tasks with annotations
         tasks = []
-        for i in range(10000):
+        for _ in range(10000):
             one_task = {
                 'data': {
                     'text': randomString(random.randint(5, 200))

@@ -61,4 +61,4 @@ def test_token_get_not_post_shows_form(business_client, client, settings):
     invite_url = response.json()['invite_url']
     response = client.get(f'{invite_url}&email=test_user@example.com&password=test_password')
     assert response.status_code == 200, response.content
-    assert str(response.content).find('Create Account') != -1
+    assert 'Create Account' in str(response.content)

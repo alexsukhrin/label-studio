@@ -29,29 +29,23 @@ def get_all_columns(project, *_):
 
     # frontend uses MST data model, so we need two directional referencing parent <-> child
     task_data_children = []
-    i = 0
-
     data_types = OrderedDict()
 
-    # add data types from config again
-    project_data_types = {}
-    for key, value in project.data_types.items():
-        # skip keys from Repeater tag, because we already have its base data,
-        # e.g.: skip 'image[{{idx}}]' because we have 'image' list already
-        if '[' not in key:
-            project_data_types[key] = value
+    project_data_types = {
+        key: value
+        for key, value in project.data_types.items()
+        if '[' not in key
+    }
     data_types.update(project_data_types.items())
 
-    # all data types from import data
-    all_data_columns = project.summary.all_data_columns
-    if all_data_columns:
+    if all_data_columns := project.summary.all_data_columns:
         data_types.update({key: 'Unknown' for key in all_data_columns if key not in data_types})
 
     # remove $undefined$ if there is one type at least in labeling config, because it will be resolved automatically
-    if len(project_data_types) > 0:
+    if project_data_types:
         data_types.pop(settings.DATA_UNDEFINED_NAME, None)
 
-    for key, data_type in list(data_types.items()):  # make data types from labeling config first
+    for key, data_type in list(data_types.items()):
         column = {
             'id': key,
             'title': key if key != settings.DATA_UNDEFINED_NAME else 'data',
@@ -65,8 +59,6 @@ def get_all_columns(project, *_):
         }
         result['columns'].append(column)
         task_data_children.append(column['id'])
-        i += 1
-
     # --- Data root ---
     data_root = {
         'id': 'data',
@@ -327,8 +319,7 @@ def get_prepare_params(request, project):
 
 def get_prepared_queryset(request, project):
     prepare_params = get_prepare_params(request, project)
-    queryset = Task.prepared.only_filtered(prepare_params=prepare_params)
-    return queryset
+    return Task.prepared.only_filtered(prepare_params=prepare_params)
 
 
 def evaluate_predictions(tasks):
@@ -359,7 +350,7 @@ def preprocess_filter(_filter, *_):
 def preprocess_field_name(raw_field_name, only_undefined_field=False):
     field_name = raw_field_name.replace("filter:", "")
     field_name = field_name.replace("tasks:", "")
-    ascending = False if field_name[0] == '-' else True  # detect direction
+    ascending = field_name[0] != '-'
     field_name = field_name[1:] if field_name[0] == '-' else field_name  # remove direction
     if field_name.startswith("data."):
         if only_undefined_field:

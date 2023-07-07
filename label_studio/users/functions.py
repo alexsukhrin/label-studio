@@ -16,8 +16,8 @@ from core.utils.common import load_func
 
 
 def hash_upload(instance, filename):
-    filename = str(uuid.uuid4())[0:8] + '-' + filename
-    return settings.AVATAR_PATH + '/' + filename
+    filename = f'{str(uuid.uuid4())[:8]}-{filename}'
+    return f'{settings.AVATAR_PATH}/{filename}'
 
 
 def check_avatar(files):
@@ -33,18 +33,21 @@ def check_avatar(files):
     # validate dimensions
     max_width = max_height = 1200
     if w > max_width or h > max_height:
-        raise forms.ValidationError('Please use an image that is %s x %s pixels or smaller.'
-                                    % (max_width, max_height))
+        raise forms.ValidationError(
+            f'Please use an image that is {max_width} x {max_height} pixels or smaller.'
+        )
 
     # validate content type
     main, sub = avatar.content_type.split('/')
-    if not (main == 'image' and sub.lower() in ['jpeg', 'jpg', 'gif', 'png']):
+    if main != 'image' or sub.lower() not in ['jpeg', 'jpg', 'gif', 'png']:
         raise forms.ValidationError(u'Please use a JPEG, GIF or PNG image.')
 
     # validate file size
     max_size = 1024 * 1024
     if len(avatar) > max_size:
-        raise forms.ValidationError('Avatar file size may not exceed ' + str(max_size/1024) + ' kb')
+        raise forms.ValidationError(
+            f'Avatar file size may not exceed {str(max_size / 1024)} kb'
+        )
 
     return avatar
 
@@ -78,9 +81,7 @@ def proceed_registration(request, user_form, organization_form, next_page):
     """
     # save user to db
     save_user = load_func(settings.SAVE_USER)
-    response = save_user(request, next_page, user_form)
-
-    return response
+    return save_user(request, next_page, user_form)
 
 
 def login(request, *args, **kwargs):

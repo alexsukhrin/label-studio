@@ -34,10 +34,11 @@ class TestPresignStorageData:
 
     @pytest.fixture
     def user(self):
-        user = User.objects.create_user(
-            username="testuser", email="testuser@email.com", password="testpassword"
+        return User.objects.create_user(
+            username="testuser",
+            email="testuser@email.com",
+            password="testpassword",
         )
-        return user
 
     def test_missing_parameters(self, view, user):
         request = APIRequestFactory().get(

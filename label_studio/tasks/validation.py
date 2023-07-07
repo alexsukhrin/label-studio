@@ -72,16 +72,12 @@ class TaskValidator:
                     data_item = reduce(getitem, keys, data)
                 except KeyError:
                     raise ValidationError('"{data_key}" key is expected in task data'.format(data_key=data_key))
-            else:
-                if data_key not in data:
-                    raise ValidationError('"{data_key}" key is expected in task data'.format(data_key=data_key))
+            elif data_key in data:
                 data_item = data[data_key]
 
-            if is_array:
-                expected_types = (list, )
             else:
-                expected_types = _DATA_TYPES.get(data_type, (str,))
-
+                raise ValidationError('"{data_key}" key is expected in task data'.format(data_key=data_key))
+            expected_types = (list, ) if is_array else _DATA_TYPES.get(data_type, (str,))
             if not isinstance(data_item, tuple(expected_types)):
                 raise ValidationError('data[\'{data_key}\']={data_value} is of type \'{type}\', '
                                       "but the object tag {data_type} expects the following types: {expected_types}"
@@ -104,18 +100,18 @@ class TaskValidator:
             TaskValidator.check_data(project, data)
         except ValidationError as e:
             if dict_is_root:
-                raise ValidationError(e.detail[0] + ' [assume: item as is = task root with values] ')
+                raise ValidationError(
+                    f'{e.detail[0]} [assume: item as is = task root with values] '
+                )
             else:
-                raise ValidationError(e.detail[0] + ' [assume: item["data"] = task root with values]')
+                raise ValidationError(
+                    f'{e.detail[0]} [assume: item["data"] = task root with values]'
+                )
 
     @staticmethod
     def check_allowed(task):
         # task is required
-        if 'data' not in task:
-            return False
-
-        # everything is ok
-        return True
+        return 'data' in task
 
     @staticmethod
     def raise_if_wrong_class(task, key, class_def):
@@ -142,9 +138,11 @@ class TaskValidator:
                 try:
                     data = json.loads(self.instance.data)
                 except ValueError as e:
-                    raise ValidationError("Can't parse task data: " + str(e))
+                    raise ValidationError(f"Can't parse task data: {str(e)}")
             else:
-                raise ValidationError('Field "data" must be string or dict, but not "' + type(self.instance.data) + '"')
+                raise ValidationError(
+                    f'Field "data" must be string or dict, but not "{type(self.instance.data)}"'
+                )
             self.check_data_and_root(self.instance.project, data)
             return task
 
@@ -198,14 +196,14 @@ class TaskValidator:
     @staticmethod
     def format_error(i, detail, item):
         if len(detail) == 1:
-            code = (str(detail[0].code + ' ')) if detail[0].code != "invalid" else ''
+            code = str(f'{detail[0].code} ') if detail[0].code != "invalid" else ''
             return 'Error {code} at item {i}: {detail} :: {item}'\
-                .format(code=code, i=i, detail=detail[0], item=item)
+                    .format(code=code, i=i, detail=detail[0], item=item)
         else:
             errors = ', '.join(detail)
             codes = str([d.code for d in detail])
             return 'Errors {codes} at item {i}: {errors} :: {item}'\
-                .format(codes=codes, i=i, errors=errors, item=item)
+                    .format(codes=codes, i=i, errors=errors, item=item)
 
     def to_internal_value(self, data):
         """ Body of run_validation for all data items

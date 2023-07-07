@@ -90,8 +90,9 @@ class UserSignupForm(forms.Form):
         allow_newsletters = None
         if 'allow_newsletters' in cleaned:
             allow_newsletters = cleaned['allow_newsletters']
-        user = User.objects.create_user(email, password, allow_newsletters=allow_newsletters)
-        return user
+        return User.objects.create_user(
+            email, password, allow_newsletters=allow_newsletters
+        )
 
 
 class UserProfileForm(forms.ModelForm):

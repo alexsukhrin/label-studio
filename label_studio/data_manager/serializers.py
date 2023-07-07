@@ -81,8 +81,7 @@ class ViewSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         result = super().to_representation(instance)
-        filters = result.pop("filter_group", {})
-        if filters:
+        if filters := result.pop("filter_group", {}):
             filters["items"] = []
             filters.pop("filters", [])
             filters.pop("id", None)
@@ -98,41 +97,33 @@ class ViewSerializer(serializers.ModelSerializer):
                 )
             result["data"]["filters"] = filters
 
-        selected_items = result.pop("selected_items", {})
-        if selected_items:
+        if selected_items := result.pop("selected_items", {}):
             result["data"]["selectedItems"] = selected_items
 
-        ordering = result.pop("ordering", {})
-        if ordering:
+        if ordering := result.pop("ordering", {}):
             result["data"]["ordering"] = ordering
         return result
 
     @staticmethod
     def _create_filters(filter_group, filters_data):
-        filter_index = 0
-        for filter_data in filters_data:
+        for filter_index, filter_data in enumerate(filters_data):
             filter_data["index"] = filter_index
             filter_group.filters.add(Filter.objects.create(**filter_data))
-            filter_index += 1
 
     def create(self, validated_data):
         with transaction.atomic():
-            filter_group_data = validated_data.pop("filter_group", None)
-            if filter_group_data:
+            if filter_group_data := validated_data.pop("filter_group", None):
                 filters_data = filter_group_data.pop("filters", [])
                 filter_group = FilterGroup.objects.create(**filter_group_data)
 
                 self._create_filters(filter_group=filter_group, filters_data=filters_data)
 
                 validated_data["filter_group_id"] = filter_group.id
-            view = self.Meta.model.objects.create(**validated_data)
-
-            return view
+            return self.Meta.model.objects.create(**validated_data)
 
     def update(self, instance, validated_data):
         with transaction.atomic():
-            filter_group_data = validated_data.pop("filter_group", None)
-            if filter_group_data:
+            if filter_group_data := validated_data.pop("filter_group", None):
                 filters_data = filter_group_data.pop("filters", [])
 
                 filter_group = instance.filter_group

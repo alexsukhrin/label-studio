@@ -123,7 +123,7 @@ class GCSExportStorage(GCSStorageMixin, ExportStorage):
 
         # get key that identifies this object in storage
         key = GCSExportStorageLink.get_key(annotation)
-        key = str(self.prefix) + '/' + key if self.prefix else key
+        key = f'{str(self.prefix)}/{key}' if self.prefix else key
 
         # put object into storage
         blob = bucket.blob(key)

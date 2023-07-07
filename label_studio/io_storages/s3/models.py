@@ -136,10 +136,10 @@ class S3ImportStorageBase(S3StorageMixin, ImportStorage):
         for obj in bucket_iter:
             key = obj.key
             if key.endswith('/'):
-                logger.debug(key + ' is skipped because it is a folder')
+                logger.debug(f'{key} is skipped because it is a folder')
                 continue
             if regex and not regex.match(key):
-                logger.debug(key + ' is skipped by regex filter')
+                logger.debug(f'{key} is skipped by regex filter')
                 continue
             yield key
 
@@ -150,8 +150,12 @@ class S3ImportStorageBase(S3StorageMixin, ImportStorage):
         """ Validate parsed data with labeling config and task structure
         """
         if not isinstance(parsed_data, dict):
-            raise TaskValidationError('Error at ' + str(key) + ':\n'
-                                      'Cloud storage supports one task (one dict object) per JSON file only. ')
+            raise TaskValidationError(
+                (
+                    f'Error at {str(key)}' + ':\n'
+                    'Cloud storage supports one task (one dict object) per JSON file only. '
+                )
+            )
         return parsed_data
 
     def get_data(self, key):
@@ -192,7 +196,7 @@ class S3ExportStorage(S3StorageMixin, ExportStorage):
 
         # get key that identifies this object in storage
         key = S3ExportStorageLink.get_key(annotation)
-        key = str(self.prefix) + '/' + key if self.prefix else key
+        key = f'{str(self.prefix)}/{key}' if self.prefix else key
 
         # put object into storage
         additional_params = {}
@@ -212,7 +216,7 @@ class S3ExportStorage(S3StorageMixin, ExportStorage):
 
         # get key that identifies this object in storage
         key = S3ExportStorageLink.get_key(annotation)
-        key = str(self.prefix) + '/' + key if self.prefix else key
+        key = f'{str(self.prefix)}/{key}' if self.prefix else key
 
         # delete object from storage
         s3.Object(self.bucket, key).delete()
@@ -254,9 +258,13 @@ class S3ImportStorageLink(ImportStorageLink):
         storage_link_exists = super(S3ImportStorageLink, cls).exists(key, storage)
         # TODO: this is a workaround to be compatible with old keys version - remove it later
         prefix = str(storage.prefix) or ''
-        return storage_link_exists or \
-            cls.objects.filter(key=prefix + key, storage=storage.id).exists() or \
-            cls.objects.filter(key=prefix + '/' + key, storage=storage.id).exists()
+        return (
+            storage_link_exists
+            or cls.objects.filter(key=prefix + key, storage=storage.id).exists()
+            or cls.objects.filter(
+                key=f'{prefix}/{key}', storage=storage.id
+            ).exists()
+        )
 
 
 class S3ExportStorageLink(ExportStorageLink):

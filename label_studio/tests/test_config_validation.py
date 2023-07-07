@@ -46,7 +46,7 @@ def test_change_label_config_repeater(tasks_count, annotations_count, prediction
                 }
             ]
         }}, project).id
-        print('TASK_ID: %s' % task_id)
+        print(f'TASK_ID: {task_id}')
         for _ in range(0, annotations_count):
             print('COMPLETION')
             make_annotation({"result": [

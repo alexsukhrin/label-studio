@@ -33,9 +33,7 @@ class ProjectViewMixin(models.Model):
 
     def has_permission(self, user):
         user.project = self.project  # link for activity log
-        if self.project.organization == user.active_organization:
-            return True
-        return False
+        return self.project.organization == user.active_organization
 
     class Meta:
         abstract = True
@@ -46,16 +44,15 @@ class View(ViewBaseModel, ProjectViewMixin):
         # convert filters to PrepareParams structure
         filters = None
         if self.filter_group:
-            items = []
-            for f in self.filter_group.filters.all():
-                items.append(
-                    dict(
-                        filter=f.column,
-                        operator=f.operator,
-                        type=f.type,
-                        value=f.value,
-                    )
+            items = [
+                dict(
+                    filter=f.column,
+                    operator=f.operator,
+                    type=f.type,
+                    value=f.value,
                 )
+                for f in self.filter_group.filters.all()
+            ]
             filters = dict(conjunction=self.filter_group.conjunction, items=items)
 
         ordering = self.ordering

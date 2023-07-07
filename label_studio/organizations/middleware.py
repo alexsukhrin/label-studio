@@ -20,6 +20,5 @@ class DummyGetSessionMiddleware:
             user.save(update_fields=['active_organization'])
         if org is not None:
             request.session['organization_pk'] = org.id
-        response = self.get_response(request)
-        return response
+        return self.get_response(request)
 

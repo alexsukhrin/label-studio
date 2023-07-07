@@ -100,18 +100,17 @@ class DirJSONsStorage(BaseStorage):
     def get(self, id):
         if id in self.cache:
             return self.cache[id]
-        else:
-            filename = os.path.join(self.path, str(id) + '.json')
-            if os.path.exists(filename):
-                data = json_load(filename)
-                self.cache[id] = data
-                return data
+        filename = os.path.join(self.path, f'{str(id)}.json')
+        if os.path.exists(filename):
+            data = json_load(filename)
+            self.cache[id] = data
+            return data
 
     def __contains__(self, id):
         return id in set(self.ids())
 
     def set(self, id, value):
-        filename = os.path.join(self.path, str(id) + '.json')
+        filename = os.path.join(self.path, f'{str(id)}.json')
         with open(filename, 'w', encoding='utf8') as fout:
             json.dump(value, fout, indent=2, sort_keys=True)
         self.cache[id] = value
@@ -132,11 +131,11 @@ class DirJSONsStorage(BaseStorage):
 
     def items(self):
         for id in self.ids():
-            filename = os.path.join(self.path, str(id) + '.json')
+            filename = os.path.join(self.path, f'{str(id)}.json')
             yield id, self.cache[id] if id in self.cache else json_load(filename)
 
     def remove(self, id):
-        filename = os.path.join(self.path, str(id) + '.json')
+        filename = os.path.join(self.path, f'{str(id)}.json')
         if os.path.exists(filename):
             os.remove(filename)
             self.cache.pop(id, None)
@@ -148,11 +147,11 @@ class DirJSONsStorage(BaseStorage):
         else:
             for i in ids:
                 self.cache.pop(i, None)
-                path = os.path.join(self.path, str(i) + '.json')
+                path = os.path.join(self.path, f'{str(i)}.json')
                 try:
                     remove_file_or_dir(path)
                 except OSError:
-                    logger.warning('Storage file already removed: ' + path)
+                    logger.warning(f'Storage file already removed: {path}')
 
     def empty(self):
         return next(self.ids(), None) is None
@@ -237,7 +236,7 @@ class ExternalTasksJSONStorage(CloudStorage):
 
     def _remove_id_from_keys_map(self, id):
         full_key = self.key_prefix + str(id)
-        assert id in self._ids_keys_map, 'No such task id: ' + str(id)
+        assert id in self._ids_keys_map, f'No such task id: {str(id)}'
         assert self._ids_keys_map[id]['key'] == full_key, (self._ids_keys_map[id]['key'], full_key)
         self._selected_ids.remove(id)
         self._ids_keys_map.pop(id)
@@ -247,11 +246,11 @@ class ExternalTasksJSONStorage(CloudStorage):
         with self.thread_lock:
             id = int(id)
 
-            logger.debug('Remove id=' + str(id) + ' from ids.json')
+            logger.debug(f'Remove id={id} from ids.json')
             self._remove_id_from_keys_map(id)
             self._save_ids()
 
-            logger.debug('Remove id=' + str(id) + ' from tasks.json')
+            logger.debug(f'Remove id={id} from tasks.json')
             self.data.pop(id, None)
             self._save()
 
@@ -259,7 +258,7 @@ class ExternalTasksJSONStorage(CloudStorage):
         with self.thread_lock:
             remove_ids = self.data if ids is None else ids
 
-            logger.debug('Remove ' + str(len(remove_ids)) + ' records from ids.json')
+            logger.debug(f'Remove {len(remove_ids)} records from ids.json')
             for id in remove_ids:
                 self._remove_id_from_keys_map(id)
             self._save_ids()

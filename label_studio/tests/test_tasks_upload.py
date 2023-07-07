@@ -41,8 +41,8 @@ def post_data_as_format(setup, format_type, body, archive, multiply_files):
         files = {'upload_file.zip': file}
 
         # replicate zip file x2
-        if 'zip_x2' == archive:
-            files.update({'upload_file2.zip': copy.deepcopy(file)})
+        if archive == 'zip_x2':
+            files['upload_file2.zip'] = copy.deepcopy(file)
 
     return setup.post(setup.urls.task_bulk, files)
 
@@ -113,7 +113,7 @@ def test_json_task_annotation_and_meta_upload(setup_project_dialog, tasks, statu
     # annotations
     annotations = Annotation.objects.filter(task__project=setup_project_dialog.project.id)
     assert annotations.count() == annotation_count * multiply_files
-    for i, annotation in enumerate(annotations):
+    for annotation in annotations:
         assert annotation.ground_truth
 
 
@@ -131,7 +131,7 @@ def test_json_task_predictions(setup_project_dialog, tasks, status_code, task_co
     # predictions
     predictions = Prediction.objects.filter(task__project=setup_project_dialog.project.id)
     assert predictions.count() == prediction_count
-    for i, predictions in enumerate(predictions):
+    for predictions in predictions:
         assert predictions.model_version == 'test'
 
 
@@ -147,7 +147,7 @@ def test_archives(setup_project_dialog, format_type, tasks, status_code, task_co
                   annotation_count, archive, multiply_files):
     """ Upload JSON task with annotation to project
     """
-    multiplier = (2 if 'zip_x2' == archive else 1) * multiply_files
+    multiplier = (2 if archive == 'zip_x2' else 1) * multiply_files
 
     r = post_data_as_format(setup_project_dialog, format_type, json.dumps(tasks), archive, multiply_files)
     print('Create json tasks with annotations result:', r.content)
@@ -181,7 +181,7 @@ def test_csv_tsv_task_upload(setup_project_dialog, format_type, tasks, status_co
                              archive, multiply_files):
     """ Upload CSV/TSV with one task to project
     """
-    multiplier = (2 if 'zip_x2' == archive else 1) * multiply_files
+    multiplier = (2 if archive == 'zip_x2' else 1) * multiply_files
 
     tasks = tasks if format_type == 'csv_file' else tasks.replace(',', '\t')  # prepare tsv file from csv
     r = post_data_as_format(setup_project_dialog, format_type, tasks, archive, multiply_files)
@@ -242,9 +242,12 @@ def test_url_upload(mocker, setup_project_dialog, tasks, status_code, task_count
     with requests_mock.Mocker(real_http=True) as m:
         url = 'http://localhost:8111/test.json'
         m.get(url, text=json.dumps(tasks), headers={'Content-Length': '100'})
-        r = setup_project_dialog.post(setup_project_dialog.urls.task_bulk, data='url='+url,
-                                      content_type="application/x-www-form-urlencoded")
-        assert r.status_code == status_code, 'Upload URL failed: ' + str(r.content)
+        r = setup_project_dialog.post(
+            setup_project_dialog.urls.task_bulk,
+            data=f'url={url}',
+            content_type="application/x-www-form-urlencoded",
+        )
+        assert r.status_code == status_code, f'Upload URL failed: {str(r.content)}'
 
         # tasks
         tasks = Task.objects.filter(project=setup_project_dialog.project.id)
@@ -263,20 +266,24 @@ def test_upload_with_token(setup_project_for_token, tasks, status_code, task_cou
     """
     setup = setup_project_for_token
     token = Token.objects.get(user=setup.user)
-    token = 'Token ' + str(token)
+    token = f'Token {str(token)}'
     broken_token = 'Token broken'
     data = setup.project_config
     data['organization_pk'] = setup.org.pk
     r = setup.post(setup.urls.project_create, data=data, HTTP_AUTHORIZATION=token)
     print('Project create with status code:', r.status_code, r.content)
-    assert r.status_code == 201, 'Create project result should be redirect to the next page: ' + str(r.content)
+    assert (
+        r.status_code == 201
+    ), f'Create project result should be redirect to the next page: {str(r.content)}'
 
     project = Project.objects.filter(title=setup.project_config['title']).first()
     setup.urls.set_project(project.pk)
 
     r = setup.post(setup.urls.task_bulk, data=json.dumps(tasks), content_type="application/json",
                    HTTP_AUTHORIZATION=broken_token if bad_token else token)
-    assert r.status_code == status_code, 'Create json tasks result: ' + str(r.content)
+    assert (
+        r.status_code == status_code
+    ), f'Create json tasks result: {str(r.content)}'
 
     # tasks
     tasks = Task.objects.filter(project=project.id)

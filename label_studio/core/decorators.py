@@ -3,11 +3,7 @@ def permission_required(*permissions, fn=None):
     def decorator(view):
         def wrapped_view(self, request, *args, **kwargs):
 
-            if callable(fn):
-                obj = fn(request, *args, **kwargs)
-            else:
-                obj = fn
-
+            obj = fn(request, *args, **kwargs) if callable(fn) else fn
             missing_permissions = [perm for perm in permissions
                                    if not request.user.has_perm(perm, obj)]
             if any(missing_permissions):
@@ -19,5 +15,7 @@ def permission_required(*permissions, fn=None):
                 )
 
             return view(self, request, *args, **kwargs)
+
         return wrapped_view
+
     return decorator

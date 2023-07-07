@@ -19,7 +19,7 @@ def get_uri_via_regex(data, prefixes=('s3', 'gs')):
             return data, prefix
 
         # another fast middle-check before regex run
-        if prefix + ':' in data:
+        if f'{prefix}:' in data:
             middle_check = True
 
     # no prefixes in data, exit
@@ -37,4 +37,4 @@ def get_uri_via_regex(data, prefixes=('s3', 'gs')):
         if r_match is None:
             logger.warning("Can't parse task.data to match URI. Reason: Match is not found.")
             return None, None
-    return r_match.group("uri"), r_match.group("storage")
+    return r_match["uri"], r_match["storage"]

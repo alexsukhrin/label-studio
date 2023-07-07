@@ -49,7 +49,7 @@ def test_views_api(business_client, project_id):
 
     # reset
     response = business_client.delete(
-        f"/api/dm/views/reset",
+        "/api/dm/views/reset",
         data=json.dumps(dict(project=project_id)),
         content_type="application/json",
     )
@@ -97,7 +97,7 @@ def test_views_api_filter_project(business_client):
 
     # filtered reset
     response = business_client.delete(
-        f"/api/dm/views/reset/",
+        "/api/dm/views/reset/",
         data=json.dumps(dict(project=project1_id)),
         content_type="application/json",
     )

@@ -62,18 +62,16 @@ def version_page(request):
     http_page = request.path == '/version/'
     result = collect_versions(force=http_page)
 
-    # html / json response
-    if request.path == '/version/':
-        # other settings from backend
-        if request.user.is_superuser:
-            result['settings'] = {key: str(getattr(settings, key)) for key in dir(settings)
-                                  if not key.startswith('_') and not hasattr(getattr(settings, key), '__call__')}
-
-        result = json.dumps(result, indent=2)
-        result = result.replace('},', '},\n').replace('\\n', ' ').replace('\\r', '')
-        return HttpResponse('<pre>' + result + '</pre>')
-    else:
+    if request.path != '/version/':
         return JsonResponse(result)
+    # other settings from backend
+    if request.user.is_superuser:
+        result['settings'] = {key: str(getattr(settings, key)) for key in dir(settings)
+                              if not key.startswith('_') and not hasattr(getattr(settings, key), '__call__')}
+
+    result = json.dumps(result, indent=2)
+    result = result.replace('},', '},\n').replace('\\n', ' ').replace('\\r', '')
+    return HttpResponse(f'<pre>{result}</pre>')
 
 
 def health(request):
@@ -127,11 +125,7 @@ def samples_time_series(request):
     if separator in aliases:
         separator = aliases[separator]
 
-    # check headless or not
-    header = True
-    if all(n.isdigit() for n in [time_column] + value_columns):
-        header = False
-
+    header = not all(n.isdigit() for n in [time_column] + value_columns)
     # generate all columns for headless csv
     if not header:
         max_column_n = max([int(v) for v in value_columns] + [0])
@@ -159,10 +153,10 @@ def samples_paragraphs(request):
     name_key = request.GET.get('nameKey', 'author')
     text_key = request.GET.get('textKey', 'text')
 
-    result = []
-    for line in _PARAGRAPH_SAMPLE:
-        result.append({name_key: line['author'], text_key: line['text']})
-
+    result = [
+        {name_key: line['author'], text_key: line['text']}
+        for line in _PARAGRAPH_SAMPLE
+    ]
     return HttpResponse(json.dumps(result), content_type='application/json')
 
 
@@ -236,4 +230,4 @@ def feature_flags(request):
         'CLOUD_INSTANCE': settings.CLOUD_INSTANCE if hasattr(settings, 'CLOUD_INSTANCE') else None
     }
 
-    return HttpResponse('<pre>' + json.dumps(flags, indent=4) + '</pre>', status=200)
+    return HttpResponse(f'<pre>{json.dumps(flags, indent=4)}</pre>', status=200)

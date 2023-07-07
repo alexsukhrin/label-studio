@@ -12,5 +12,5 @@ def task_page(request, pk):
     response = {
         'version': get_short_version()
     }
-    response.update(find_editor_files())
+    response |= find_editor_files()
     return render(request, 'base.html', response)
